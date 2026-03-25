@@ -4,9 +4,9 @@ import com.example.skhubox.dto.ApiResponse;
 import com.example.skhubox.dto.LockerChangeRequest;
 import com.example.skhubox.dto.LockerReservationResponse;
 import com.example.skhubox.dto.LockerReserveRequest;
-import com.example.skhubox.dto.LockerReturnRequest;
 import com.example.skhubox.service.LockerReservationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,33 +21,35 @@ public class LockerReservationController {
 
     @PostMapping("/reserve")
     public ResponseEntity<ApiResponse<LockerReservationResponse>> reserveLocker(
-            @RequestBody LockerReserveRequest request
+            @RequestBody LockerReserveRequest request,
+            Authentication authentication
     ) {
+        String email = authentication.getName();
         LockerReservationResponse response =
-                lockerReservationService.reserveLocker(request.getUserId(), request.getLockerId());
+                lockerReservationService.reserveLocker(email, request.getLockerId());
 
         return ResponseEntity.ok(ApiResponse.ok("사물함 예약 성공", response));
     }
 
     @PostMapping("/return")
     public ResponseEntity<ApiResponse<LockerReservationResponse>> returnLocker(
-            @RequestBody LockerReturnRequest request
+            Authentication authentication
     ) {
+        String email = authentication.getName();
         LockerReservationResponse response =
-                lockerReservationService.returnLocker(request.getUserId());
+                lockerReservationService.returnLocker(email);
 
         return ResponseEntity.ok(ApiResponse.ok("사물함 반납 성공", response));
     }
 
     @PostMapping("/change")
     public ResponseEntity<ApiResponse<LockerReservationResponse>> changeLocker(
-            @RequestBody LockerChangeRequest request
+            @RequestBody LockerChangeRequest request,
+            Authentication authentication
     ) {
+        String email = authentication.getName();
         LockerReservationResponse response =
-                lockerReservationService.changeLocker(
-                        request.getUserId(),
-                        request.getNewLockerId()
-                );
+                lockerReservationService.changeLocker(email, request.getNewLockerId());
 
         return ResponseEntity.ok(ApiResponse.ok("사물함 변경 성공", response));
     }

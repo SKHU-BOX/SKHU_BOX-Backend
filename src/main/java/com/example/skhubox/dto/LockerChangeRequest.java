@@ -1,5 +1,10 @@
 package com.example.skhubox.dto;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public class LockerChangeRequest {
 
     private Long userId;
@@ -9,27 +14,4 @@ public class LockerChangeRequest {
     public LockerChangeRequest() {
     }
 
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public Long getCurrentLockerId() {
-        return currentLockerId;
-    }
-
-    public void setCurrentLockerId(Long currentLockerId) {
-        this.currentLockerId = currentLockerId;
-    }
-
-    public Long getNewLockerId() {
-        return newLockerId;
-    }
-
-    public void setNewLockerId(Long newLockerId) {
-        this.newLockerId = newLockerId;
-    }
 }

@@ -1,5 +1,10 @@
 package com.example.skhubox.dto;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public class LockerReservationResponse {
 
     private Long reservationId;
@@ -19,43 +24,4 @@ public class LockerReservationResponse {
         this.message = message;
     }
 
-    public Long getReservationId() {
-        return reservationId;
-    }
-
-    public void setReservationId(Long reservationId) {
-        this.reservationId = reservationId;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public Long getLockerId() {
-        return lockerId;
-    }
-
-    public void setLockerId(Long lockerId) {
-        this.lockerId = lockerId;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
 }

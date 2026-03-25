@@ -24,10 +24,13 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    public User(String studentNumber, String name, String email) {
+    @Column(nullable = false)
+    private String password;
+
+    public User(String studentNumber, String name, String email, String password) {
         this.studentNumber = studentNumber;
         this.name = name;
         this.email = email;
+        this.password = password;
     }
 }
-

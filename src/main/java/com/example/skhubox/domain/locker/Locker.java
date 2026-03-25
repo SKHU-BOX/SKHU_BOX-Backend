@@ -1,5 +1,6 @@
 package com.example.skhubox.domain.locker;
 
+import com.example.skhubox.domain.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -9,25 +10,30 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "lockers")
-public class Locker {
+public class Locker extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 30)
+    @Column(nullable = false, unique = true)
     private String lockerNumber;
 
-    @Column(nullable = false, length = 50)
-    private String location;
+    private String building;
+
+    private int floor;
+
+    private String locationDetail;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
     private LockerStatus status;
 
-    public Locker(String lockerNumber, String location) {
+    public Locker(String lockerNumber, String building, int floor, String locationDetail) {
         this.lockerNumber = lockerNumber;
-        this.location = location;
+        this.building = building;
+        this.floor = floor;
+        this.locationDetail = locationDetail;
         this.status = LockerStatus.AVAILABLE;
     }
 
