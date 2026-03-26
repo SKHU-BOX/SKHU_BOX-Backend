@@ -42,7 +42,7 @@ class LockerReservationServiceTest {
     @DisplayName("사물함 예약 성공")
     void reserveLocker_success() {
         User user = userRepository.save(
-                new User("20210001", "홍길동", "hong1@example.com", "IT융합자율학부",""1234");
+                new User("20210001", "홍길동", "hong1@example.com", "IT융합자율학부","1234")
         );
         Locker locker = lockerRepository.save(
                 new Locker("이천환기념관", 1, "남자화장실 옆", "A-101")
