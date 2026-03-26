@@ -28,8 +28,8 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     }
 
     @Override
-    public LockerReservationResponse reserveLocker(String email, Long lockerId) {
-        User user = userRepository.findByEmail(email)
+    public LockerReservationResponse reserveLocker(String studentNumber, Long lockerId) {
+        User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
         Locker locker = lockerRepository.findByIdWithPessimisticLock(lockerId)
@@ -66,8 +66,8 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     }
 
     @Override
-    public LockerReservationResponse returnLocker(String email) {
-        User user = userRepository.findByEmail(email)
+    public LockerReservationResponse returnLocker(String studentNumber) {
+        User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
         LockerReservation reservation = lockerReservationRepository
@@ -90,8 +90,8 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     }
 
     @Override
-    public LockerReservationResponse changeLocker(String email, Long newLockerId) {
-        User user = userRepository.findByEmail(email)
+    public LockerReservationResponse changeLocker(String studentNumber, Long newLockerId) {
+        User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
         LockerReservation currentReservation = lockerReservationRepository

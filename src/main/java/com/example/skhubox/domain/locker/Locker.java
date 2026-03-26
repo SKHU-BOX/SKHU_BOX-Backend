@@ -16,24 +16,27 @@ public class Locker extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
+    private String building;
+
     @Column(nullable = false, unique = true)
     private String lockerNumber;
 
-    private String building;
-
+    @Column(nullable = false)
     private int floor;
-
+    @Column(nullable = false)
     private String locationDetail;
+
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private LockerStatus status;
 
-    public Locker(String lockerNumber, String building, int floor, String locationDetail) {
-        this.lockerNumber = lockerNumber;
+    public Locker(String building, int floor, String locationDetail, String lockerNumber) {
         this.building = building;
         this.floor = floor;
         this.locationDetail = locationDetail;
+        this.lockerNumber = lockerNumber;
         this.status = LockerStatus.AVAILABLE;
     }
 

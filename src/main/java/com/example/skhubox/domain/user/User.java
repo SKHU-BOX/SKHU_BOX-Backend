@@ -27,10 +27,15 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    public User(String studentNumber, String name, String email, String password) {
+    @Column(length = 50)
+    private String department;
+
+    public User(String studentNumber, String name, String email, String department,String password) {
         this.studentNumber = studentNumber;
         this.name = name;
         this.email = email;
+        this.department = department;
         this.password = password;
+
     }
 }

@@ -24,9 +24,10 @@ public class LockerReservationController {
             @RequestBody LockerReserveRequest request,
             Authentication authentication
     ) {
-        String email = authentication.getName();
+        String studentNumber = authentication.getName();
+
         LockerReservationResponse response =
-                lockerReservationService.reserveLocker(email, request.getLockerId());
+                lockerReservationService.reserveLocker(studentNumber, request.getLockerId());
 
         return ResponseEntity.ok(ApiResponse.ok("사물함 예약 성공", response));
     }

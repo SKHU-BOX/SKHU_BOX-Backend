@@ -30,6 +30,10 @@ public class AuthService {
     }
 
     public void signup(SignupRequest request) {
+        if (userRepository.findByStudentNumber(request.getStudentNumber()).isPresent()) {
+            throw new IllegalArgumentException("이미 존재하는 학번입니다.");
+        }
+
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
         }
@@ -38,6 +42,7 @@ public class AuthService {
                 request.getStudentNumber(),
                 request.getName(),
                 request.getEmail(),
+                request.getDepartment(),
                 passwordEncoder.encode(request.getPassword())
         );
 
@@ -47,7 +52,7 @@ public class AuthService {
     public LoginResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
+                        request.getStudentNumber(),
                         request.getPassword()
                 )
         );

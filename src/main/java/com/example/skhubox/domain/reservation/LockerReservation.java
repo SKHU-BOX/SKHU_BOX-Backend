@@ -46,6 +46,7 @@ public class LockerReservation extends BaseEntity {
 
     public void returnReservation() {
         this.status = ReservationStatus.RETURNED;
+        this.endAt = LocalDateTime.now();
     }
 
     public void expire() {
