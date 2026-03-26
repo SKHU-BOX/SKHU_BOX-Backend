@@ -28,14 +28,14 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     }
 
     @Override
-    public LockerReservationResponse reserveLocker(Long userId, Long lockerId) {
-        User user = userRepository.findById(userId)
+    public LockerReservationResponse reserveLocker(String studentNumber, Long lockerId) {
+        User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
         Locker locker = lockerRepository.findByIdWithPessimisticLock(lockerId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사물함입니다."));
 
-        if (lockerReservationRepository.existsByUser_IdAndStatus(userId, ReservationStatus.ACTIVE)) {
+        if (lockerReservationRepository.existsByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)) {
             throw new IllegalArgumentException("이미 예약 중인 사물함이 있습니다.");
         }
 
@@ -66,12 +66,12 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     }
 
     @Override
-    public LockerReservationResponse returnLocker(Long userId) {
-        User user = userRepository.findById(userId)
+    public LockerReservationResponse returnLocker(String studentNumber) {
+        User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
         LockerReservation reservation = lockerReservationRepository
-                .findByUser_IdAndStatus(userId, ReservationStatus.ACTIVE)
+                .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
                 .orElseThrow(() -> new IllegalArgumentException("사용 중인 사물함이 없습니다."));
 
         Locker locker = lockerRepository.findByIdWithPessimisticLock(reservation.getLocker().getId())
@@ -90,12 +90,12 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     }
 
     @Override
-    public LockerReservationResponse changeLocker(Long userId, Long newLockerId) {
-        User user = userRepository.findById(userId)
+    public LockerReservationResponse changeLocker(String studentNumber, Long newLockerId) {
+        User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
 
         LockerReservation currentReservation = lockerReservationRepository
-                .findByUser_IdAndStatus(userId, ReservationStatus.ACTIVE)
+                .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
                 .orElseThrow(() -> new IllegalArgumentException("현재 사용 중인 사물함이 없습니다."));
 
         Locker currentLocker = lockerRepository.findByIdWithPessimisticLock(currentReservation.getLocker().getId())

@@ -4,9 +4,9 @@ import com.example.skhubox.dto.LockerReservationResponse;
 
 public interface LockerReservationService {
 
-    LockerReservationResponse reserveLocker(Long userId, Long lockerId);
+    LockerReservationResponse reserveLocker(String studentNumber, Long lockerId);
 
-    LockerReservationResponse returnLocker(Long userId);
+    LockerReservationResponse returnLocker(String studentNumber);
 
-    LockerReservationResponse changeLocker(Long userId, Long newLockerId);
+    LockerReservationResponse changeLocker(String studentNumber, Long newLockerId);
 }

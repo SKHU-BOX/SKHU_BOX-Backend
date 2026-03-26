@@ -1,5 +1,10 @@
 package com.example.skhubox.dto;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public class ApiResponse<T> {
 
     private boolean success;
@@ -23,27 +28,4 @@ public class ApiResponse<T> {
         return new ApiResponse<>(false, message, null);
     }
 
-    public boolean isSuccess() {
-        return success;
-    }
-
-    public void setSuccess(boolean success) {
-        this.success = success;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public T getData() {
-        return data;
-    }
-
-    public void setData(T data) {
-        this.data = data;
-    }
 }
