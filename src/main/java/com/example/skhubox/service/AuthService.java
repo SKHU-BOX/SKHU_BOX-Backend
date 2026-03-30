@@ -51,7 +51,12 @@ public class AuthService {
     }
 
     public LoginResponse login(LoginRequest request) {
+        // 1. 학번 존재 여부 먼저 확인
+        userRepository.findByStudentNumber(request.getStudentNumber())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
         try {
+            // 2. 비밀번호 인증 진행
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getStudentNumber(),
@@ -62,7 +67,8 @@ public class AuthService {
             String token = jwtTokenProvider.createToken(authentication);
             return new LoginResponse(token, "Bearer");
         } catch (BadCredentialsException e) {
-            throw new IllegalArgumentException("학번 또는 비밀번호가 일치하지 않습니다.");
+            // 학번은 존재하는데 인증에 실패한 경우이므로 비밀번호 오류임
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         } catch (DisabledException e) {
             throw new IllegalArgumentException("계정이 비활성화되었습니다.");
         } catch (LockedException e) {

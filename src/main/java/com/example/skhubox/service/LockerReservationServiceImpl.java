@@ -5,11 +5,15 @@ import com.example.skhubox.domain.reservation.LockerReservation;
 import com.example.skhubox.domain.reservation.ReservationStatus;
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.dto.LockerReservationResponse;
+import com.example.skhubox.dto.LockerResponse;
 import com.example.skhubox.repository.LockerRepository;
 import com.example.skhubox.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.skhubox.repository.LockerReservationRepository;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -133,6 +137,33 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 newLocker.getId(),
                 savedReservation.getStatus().name(),
                 "사물함 변경이 완료되었습니다."
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LockerResponse> getAllLockers() {
+        return lockerRepository.findAll().stream()
+                .map(LockerResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LockerReservationResponse getMyReservation(String studentNumber) {
+        User user = userRepository.findByStudentNumber(studentNumber)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+
+        LockerReservation reservation = lockerReservationRepository
+                .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("현재 사용 중인 사물함이 없습니다."));
+
+        return new LockerReservationResponse(
+                reservation.getId(),
+                user.getId(),
+                reservation.getLocker().getId(),
+                reservation.getStatus().name(),
+                "현재 예약 정보 조회 성공"
         );
     }
 }

@@ -3,12 +3,15 @@ package com.example.skhubox.controller;
 import com.example.skhubox.dto.ApiResponse;
 import com.example.skhubox.dto.LockerChangeRequest;
 import com.example.skhubox.dto.LockerReservationResponse;
+import com.example.skhubox.dto.LockerResponse;
 import com.example.skhubox.dto.LockerReserveRequest;
 import com.example.skhubox.service.LockerReservationService;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/lockers")
@@ -18,6 +21,21 @@ public class LockerReservationController {
 
     public LockerReservationController(LockerReservationService lockerReservationService) {
         this.lockerReservationService = lockerReservationService;
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<LockerResponse>>> getAllLockers() {
+        List<LockerResponse> response = lockerReservationService.getAllLockers();
+        return ResponseEntity.ok(ApiResponse.ok("전체 사물함 목록 조회 성공", response));
+    }
+
+    @GetMapping("/my-reservation")
+    public ResponseEntity<ApiResponse<LockerReservationResponse>> getMyReservation(
+            @Parameter(hidden = true) Authentication authentication
+    ) {
+        String studentNumber = authentication.getName();
+        LockerReservationResponse response = lockerReservationService.getMyReservation(studentNumber);
+        return ResponseEntity.ok(ApiResponse.ok("내 예약 정보 조회 성공", response));
     }
 
     @PostMapping("/reserve")
