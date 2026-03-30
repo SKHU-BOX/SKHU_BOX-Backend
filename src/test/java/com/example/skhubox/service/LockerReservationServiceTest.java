@@ -182,7 +182,7 @@ class LockerReservationServiceTest {
         User user2 = userRepository.save(
                 new User("20210008", "사용자2", "user2@example.com", "미래융합자율학부","1234")
         );
-        Locker locker = lockerRepository.save(
+         Locker locker = lockerRepository.save(
                 new Locker("이천환기념관", 1, "남자화장실 옆", "A-108")
         );
 
