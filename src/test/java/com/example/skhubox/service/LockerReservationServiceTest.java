@@ -16,6 +16,7 @@ import com.example.skhubox.repository.LockerReservationRepository;
 import com.example.skhubox.repository.LockerRepository;
 import com.example.skhubox.repository.UserRepository;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,11 +39,18 @@ class LockerReservationServiceTest {
     @Autowired
     private LockerReservationRepository lockerReservationRepository;
 
+    @AfterEach
+    void tearDown() {
+        lockerReservationRepository.deleteAll();
+        lockerRepository.deleteAll();
+        userRepository.deleteAll();
+    }
+
     @Test
     @DisplayName("사물함 예약 성공")
     void reserveLocker_success() {
         User user = userRepository.save(
-                new User("20210001", "홍길동", "hong1@example.com", "IT융합자율학부","1234")
+                new User("202100011", "홍길동", "hong1@office.skhu.ac.kr", "IT융합자율학부","1234")
         );
         Locker locker = lockerRepository.save(
                 new Locker("이천환기념관", 1, "남자화장실 옆", "A-101")
@@ -61,14 +69,15 @@ class LockerReservationServiceTest {
         assertEquals(locker.getId(), reservation.getLocker().getId());
 
         Locker savedLocker = lockerRepository.findById(locker.getId()).orElseThrow();
-        assertEquals(LockerStatus.RESERVED, savedLocker.getStatus());
+        assertEquals(LockerStatus.NORMAL, savedLocker.getStatus());
+        assertTrue(lockerReservationRepository.existsByLocker_IdAndStatus(locker.getId(), ReservationStatus.ACTIVE));
     }
 
     @Test
     @DisplayName("사용자는 동시에 하나의 사물함만 예약 가능")
     void reserveLocker_fail_when_user_already_has_active_reservation() {
         User user = userRepository.save(
-                new User("20210002", "김철수", "kim1@example.com", "사회융합자율학부","1234")
+                new User("202100022", "김철수", "kim1@office.skhu.ac.kr", "사회융합자율학부","1234")
         );
         Locker locker1 = lockerRepository.save(
                 new Locker("이천환기념관", 1, "남자화장실 옆", "A-102")
@@ -84,17 +93,17 @@ class LockerReservationServiceTest {
                 () -> lockerReservationService.reserveLocker(user.getStudentNumber(), locker2.getId())
         );
 
-        assertEquals("이미 예약 중인 사물함이 있습니다.", exception.getMessage());
+        assertEquals("이미 이용 중인 사물함이 있습니다.", exception.getMessage());
     }
 
     @Test
     @DisplayName("이미 예약된 사물함은 다른 사용자가 예약할 수 없다")
     void reserveLocker_fail_when_locker_already_reserved() {
         User user1 = userRepository.save(
-                new User("202114034", "강대혁", "kangdh0430@skhu.ac.kr", "미디어컨텐츠융합자율학부","kang0430")
+                new User("202114034", "강대혁", "kangdh0430@office.skhu.ac.kr", "미디어컨텐츠융합자율학부","kang0430")
         );
         User user2 = userRepository.save(
-                new User("20210004", "박민수", "park1@example.com", "사회융합자율학부","2345")
+                new User("202100044", "박민수", "park1@office.skhu.ac.kr", "사회융합자율학부","2345")
         );
         Locker locker = lockerRepository.save(
                 new Locker("이천환기념관", 1, "남자화장실 옆", "A-104")
@@ -107,17 +116,14 @@ class LockerReservationServiceTest {
                 () -> lockerReservationService.reserveLocker(user2.getStudentNumber(), locker.getId())
         );
 
-        assertTrue(
-                exception.getMessage().equals("이미 예약된 사물함입니다.")
-                        || exception.getMessage().equals("이미 사용 중인 사물함입니다.")
-        );
+        assertEquals("이미 다른 사용자가 이용 중인 사물함입니다.", exception.getMessage());
     }
 
     @Test
     @DisplayName("사물함 반납 성공")
     void returnLocker_success() {
         User user = userRepository.save(
-                new User("20210005", "최유진", "choi1@example.com", "IT융합자율학부","1234")
+                new User("202100055", "최유진", "choi1@office.skhu.ac.kr", "IT융합자율학부","1234")
         );
         Locker locker = lockerRepository.save(
                 new Locker("이천환기념관", 1, "남자화장실 옆", "A-105")
@@ -134,15 +140,15 @@ class LockerReservationServiceTest {
         Locker savedLocker = lockerRepository.findById(locker.getId()).orElseThrow();
 
         assertEquals(ReservationStatus.RETURNED, reservation.getStatus());
-        assertNotNull(reservation.getEndAt());
-        assertEquals(LockerStatus.AVAILABLE, savedLocker.getStatus());
+        assertEquals(LockerStatus.NORMAL, savedLocker.getStatus());
+        assertFalse(lockerReservationRepository.existsByLocker_IdAndStatus(locker.getId(), ReservationStatus.ACTIVE));
     }
 
     @Test
     @DisplayName("사용 중인 사물함을 다른 사용 가능한 사물함으로 변경 성공")
     void changeLocker_success() {
         User user = userRepository.save(
-                new User("20210006", "정하늘", "jung1@example.com", "사회융합자율학부","1234")
+                new User("202100066", "정하늘", "jung1@office.skhu.ac.kr", "사회융합자율학부","1234")
         );
         Locker oldLocker = lockerRepository.save(
                 new Locker("이천환기념관", 1, "남자화장실 옆", "A-106")
@@ -151,36 +157,21 @@ class LockerReservationServiceTest {
                 new Locker("이천환기념관", 1, "남자화장실 옆", "A-107")
         );
 
-        LockerReservationResponse oldResponse =
-                lockerReservationService.reserveLocker(user.getStudentNumber(), oldLocker.getId());
+        lockerReservationService.reserveLocker(user.getStudentNumber(), oldLocker.getId());
+        lockerReservationService.changeLocker(user.getStudentNumber(), newLocker.getId());
 
-        LockerReservationResponse newResponse =
-                lockerReservationService.changeLocker(user.getStudentNumber(), newLocker.getId());
-
-        Long oldReservationId = oldResponse.getReservationId();
-        Long newReservationId = newResponse.getReservationId();
-
-        LockerReservation oldReservation = lockerReservationRepository.findById(oldReservationId).orElseThrow();
-        LockerReservation newReservation = lockerReservationRepository.findById(newReservationId).orElseThrow();
-
-        Locker savedOldLocker = lockerRepository.findById(oldLocker.getId()).orElseThrow();
-        Locker savedNewLocker = lockerRepository.findById(newLocker.getId()).orElseThrow();
-
-        assertEquals(ReservationStatus.RETURNED, oldReservation.getStatus());
-        assertEquals(ReservationStatus.ACTIVE, newReservation.getStatus());
-
-        assertEquals(LockerStatus.AVAILABLE, savedOldLocker.getStatus());
-        assertEquals(LockerStatus.RESERVED, savedNewLocker.getStatus());
+        assertFalse(lockerReservationRepository.existsByLocker_IdAndStatus(oldLocker.getId(), ReservationStatus.ACTIVE));
+        assertTrue(lockerReservationRepository.existsByLocker_IdAndStatus(newLocker.getId(), ReservationStatus.ACTIVE));
     }
 
     @Test
     @DisplayName("동시에 같은 사물함 예약 요청이 들어오면 1명만 성공해야 한다")
     void reserveLocker_concurrent_onlyOneSuccess() throws InterruptedException {
         User user1 = userRepository.save(
-                new User("20210007", "사용자1", "user1@example.com", "미디어컨텐츠융합자율학부","1234")
+                new User("202100077", "사용자1", "user1@office.skhu.ac.kr", "미디어컨텐츠융합자율학부","1234")
         );
         User user2 = userRepository.save(
-                new User("20210008", "사용자2", "user2@example.com", "미래융합자율학부","1234")
+                new User("202100088", "사용자2", "user2@office.skhu.ac.kr", "미래융합학부","1234")
         );
          Locker locker = lockerRepository.save(
                 new Locker("이천환기념관", 1, "남자화장실 옆", "A-108")
@@ -239,8 +230,5 @@ class LockerReservationServiceTest {
         );
 
         assertEquals(1, activeReservationCount, "해당 사물함의 활성 예약은 1건만 존재해야 한다.");
-
-        Locker savedLocker = lockerRepository.findById(locker.getId()).orElseThrow();
-        assertEquals(LockerStatus.RESERVED, savedLocker.getStatus());
     }
 }
