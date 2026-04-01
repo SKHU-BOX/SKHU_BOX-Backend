@@ -24,9 +24,9 @@ public class Locker extends BaseEntity {
 
     @Column(nullable = false)
     private int floor;
+
     @Column(nullable = false)
     private String locationDetail;
-
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -37,17 +37,10 @@ public class Locker extends BaseEntity {
         this.floor = floor;
         this.locationDetail = locationDetail;
         this.lockerNumber = lockerNumber;
-        this.status = LockerStatus.AVAILABLE;
+        this.status = LockerStatus.NORMAL;
     }
 
-    public void reserve() {
-        this.status = LockerStatus.RESERVED;
-    }
-
-    public void makeAvailable() {
-        this.status = LockerStatus.AVAILABLE;
-    }
-
+    // 물리적 상태 변경 로직 (관리자용)
     public void markBroken() {
         this.status = LockerStatus.BROKEN;
     }
@@ -56,11 +49,12 @@ public class Locker extends BaseEntity {
         this.status = LockerStatus.DISABLED;
     }
 
-    public boolean isAvailable() {
-        return this.status == LockerStatus.AVAILABLE;
+    public void restore() {
+        this.status = LockerStatus.NORMAL;
     }
 
-    public boolean isBrokenOrDisabled() {
-        return this.status == LockerStatus.BROKEN || this.status == LockerStatus.DISABLED;
+    // 대여 가능 여부 중 '물리적 상태'만 체크
+    public boolean isNormal() {
+        return this.status == LockerStatus.NORMAL;
     }
 }
