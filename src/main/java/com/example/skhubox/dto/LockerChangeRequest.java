@@ -1,17 +1,12 @@
 package com.example.skhubox.dto;
 
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
-@Setter
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class LockerChangeRequest {
-
-    private Long userId;
-    private Long currentLockerId;
     private Long newLockerId;
-
-    public LockerChangeRequest() {
-    }
-
 }
