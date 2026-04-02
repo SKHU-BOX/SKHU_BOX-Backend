@@ -2,6 +2,7 @@ package com.example.skhubox.service;
 
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.exception.BusinessException;
+import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,7 @@ public class UserService {
 
     public User findByStudentNumber(String studentNumber) {
         return userRepository.findByStudentNumber(studentNumber)
-                .orElseThrow(() -> new BusinessException("존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
     public boolean existsByStudentNumber(String studentNumber) {

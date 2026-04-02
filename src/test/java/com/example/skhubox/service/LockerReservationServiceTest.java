@@ -12,6 +12,7 @@ import com.example.skhubox.domain.reservation.LockerReservation;
 import com.example.skhubox.domain.reservation.ReservationStatus;
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.dto.LockerReservationResponse;
+import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.repository.LockerReservationRepository;
 import com.example.skhubox.repository.LockerRepository;
 import com.example.skhubox.repository.UserRepository;
@@ -88,8 +89,8 @@ class LockerReservationServiceTest {
 
         lockerReservationService.reserveLocker(user.getStudentNumber(), locker1.getId());
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        BusinessException exception = assertThrows(
+                BusinessException.class,
                 () -> lockerReservationService.reserveLocker(user.getStudentNumber(), locker2.getId())
         );
 
@@ -111,8 +112,8 @@ class LockerReservationServiceTest {
 
         lockerReservationService.reserveLocker(user1.getStudentNumber(), locker.getId());
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        BusinessException exception = assertThrows(
+                BusinessException.class,
                 () -> lockerReservationService.reserveLocker(user2.getStudentNumber(), locker.getId())
         );
 

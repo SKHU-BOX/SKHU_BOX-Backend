@@ -5,6 +5,7 @@ import com.example.skhubox.dto.auth.LoginRequest;
 import com.example.skhubox.dto.auth.LoginResponse;
 import com.example.skhubox.dto.auth.SignupRequest;
 import com.example.skhubox.exception.BusinessException;
+import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.UserRepository;
 import com.example.skhubox.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -28,11 +29,11 @@ public class AuthService {
 
     public void signup(SignupRequest request) {
         if (userService.existsByStudentNumber(request.getStudentNumber())) {
-            throw new BusinessException("이미 존재하는 학번입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_STUDENT_NUMBER);
         }
 
         if (userService.existsByEmail(request.getEmail())) {
-            throw new BusinessException("이미 존재하는 이메일입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
         User user = new User(
@@ -48,7 +49,6 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        // 유저 존재 여부 확인
         userService.findByStudentNumber(request.getStudentNumber());
 
         try {
@@ -62,9 +62,9 @@ public class AuthService {
             String token = jwtTokenProvider.createToken(authentication);
             return new LoginResponse(token, "Bearer");
         } catch (BadCredentialsException e) {
-            throw new BusinessException("비밀번호가 일치하지 않습니다.");
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         } catch (AuthenticationException e) {
-            throw new BusinessException("로그인 인증에 실패했습니다.");
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
     }
 }

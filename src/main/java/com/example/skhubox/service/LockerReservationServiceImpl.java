@@ -7,6 +7,7 @@ import com.example.skhubox.domain.user.User;
 import com.example.skhubox.dto.LockerReservationResponse;
 import com.example.skhubox.dto.LockerResponse;
 import com.example.skhubox.exception.BusinessException;
+import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.LockerRepository;
 import com.example.skhubox.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -37,7 +38,6 @@ public class LockerReservationServiceImpl implements LockerReservationService {
         User user = getUser(studentNumber);
         Locker locker = getLockedLocker(lockerId);
 
-        // 예약 가능 여부 검증 분리
         validateReservable(user, locker);
 
         LockerReservation reservation = new LockerReservation(user, locker);
@@ -52,9 +52,8 @@ public class LockerReservationServiceImpl implements LockerReservationService {
         
         LockerReservation reservation = lockerReservationRepository
                 .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException("현재 이용 중인 사물함이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
 
-        // 반납 시 사물함 락 획득 (경쟁 상태 방어)
         getLockedLocker(reservation.getLocker().getId());
 
         reservation.returnReservation();
@@ -68,15 +67,14 @@ public class LockerReservationServiceImpl implements LockerReservationService {
 
         LockerReservation currentReservation = lockerReservationRepository
                 .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException("변경할 기존 예약 내역이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
 
         Long currentLockerId = currentReservation.getLocker().getId();
 
         if (currentLockerId.equals(newLockerId)) {
-            throw new BusinessException("동일한 사물함으로 변경할 수 없습니다.");
+            throw new BusinessException(ErrorCode.SAME_LOCKER_CHANGE);
         }
 
-        // [데드락 방지] 사물함 ID 순서대로 락 획득
         Long firstId = Math.min(currentLockerId, newLockerId);
         Long secondId = Math.max(currentLockerId, newLockerId);
 
@@ -85,10 +83,8 @@ public class LockerReservationServiceImpl implements LockerReservationService {
 
         Locker newLocker = (firstId.equals(newLockerId)) ? getLockedLocker(firstId) : secondLocker;
 
-        // 새 사물함 검증
         validateNewLocker(newLocker);
 
-        // 기존 예약 반납 및 새 예약 생성
         currentReservation.returnReservation();
 
         LockerReservation newReservation = new LockerReservation(user, newLocker);
@@ -104,7 +100,6 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 .map(LockerResponse::from)
                 .collect(Collectors.toList());
     }
-
     @Override
     @Transactional(readOnly = true)
     public LockerReservationResponse getMyReservation(String studentNumber) {
@@ -112,44 +107,42 @@ public class LockerReservationServiceImpl implements LockerReservationService {
 
         LockerReservation reservation = lockerReservationRepository
                 .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException("현재 이용 중인 사물함이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
 
         return toResponse(reservation, "현재 예약 정보 조회 성공");
     }
 
-    // --- Private Helper Methods (리팩토링의 핵심) ---
-
     private User getUser(String studentNumber) {
         return userRepository.findByStudentNumber(studentNumber)
-                .orElseThrow(() -> new BusinessException("존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
     private Locker getLockedLocker(Long lockerId) {
         return lockerRepository.findByIdWithPessimisticLock(lockerId)
-                .orElseThrow(() -> new BusinessException("사물함 정보가 존재하지 않습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.LOCKER_NOT_FOUND));
     }
 
     private void validateReservable(User user, Locker locker) {
         if (!locker.isNormal()) {
-            throw new BusinessException("해당 사물함은 현재 사용 불가 상태입니다.");
+            throw new BusinessException(ErrorCode.LOCKER_NOT_NORMAL);
         }
 
         if (lockerReservationRepository.existsByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)) {
-            throw new BusinessException("이미 이용 중인 사물함이 있습니다.");
+            throw new BusinessException(ErrorCode.USER_ALREADY_HAS_LOCKER);
         }
 
         if (lockerReservationRepository.existsByLocker_IdAndStatus(locker.getId(), ReservationStatus.ACTIVE)) {
-            throw new BusinessException("이미 다른 사용자가 이용 중인 사물함입니다.");
+            throw new BusinessException(ErrorCode.ALREADY_RESERVED_LOCKER);
         }
     }
 
     private void validateNewLocker(Locker newLocker) {
         if (!newLocker.isNormal()) {
-            throw new BusinessException("변경하려는 사물함은 현재 사용 불가 상태입니다.");
+            throw new BusinessException(ErrorCode.LOCKER_NOT_NORMAL);
         }
 
         if (lockerReservationRepository.existsByLocker_IdAndStatus(newLocker.getId(), ReservationStatus.ACTIVE)) {
-            throw new BusinessException("변경하려는 사물함은 이미 다른 사용자가 이용 중입니다.");
+            throw new BusinessException(ErrorCode.ALREADY_RESERVED_LOCKER);
         }
     }
 
