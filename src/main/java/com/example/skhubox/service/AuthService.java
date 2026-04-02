@@ -4,6 +4,7 @@ import com.example.skhubox.domain.user.User;
 import com.example.skhubox.dto.auth.LoginRequest;
 import com.example.skhubox.dto.auth.LoginResponse;
 import com.example.skhubox.dto.auth.SignupRequest;
+import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.repository.UserRepository;
 import com.example.skhubox.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -27,11 +28,11 @@ public class AuthService {
 
     public void signup(SignupRequest request) {
         if (userService.existsByStudentNumber(request.getStudentNumber())) {
-            throw new IllegalArgumentException("이미 존재하는 학번입니다.");
+            throw new BusinessException("이미 존재하는 학번입니다.");
         }
 
         if (userService.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
+            throw new BusinessException("이미 존재하는 이메일입니다.");
         }
 
         User user = new User(
@@ -47,11 +48,10 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
-        // 1. 유저 존재 여부 확인 (UserService 활용)
+        // 유저 존재 여부 확인
         userService.findByStudentNumber(request.getStudentNumber());
 
         try {
-            // 2. 인증 매니저를 통한 인증 처리
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getStudentNumber(),
@@ -62,9 +62,9 @@ public class AuthService {
             String token = jwtTokenProvider.createToken(authentication);
             return new LoginResponse(token, "Bearer");
         } catch (BadCredentialsException e) {
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+            throw new BusinessException("비밀번호가 일치하지 않습니다.");
         } catch (AuthenticationException e) {
-            throw new IllegalArgumentException("로그인 인증에 실패했습니다.");
+            throw new BusinessException("로그인 인증에 실패했습니다.");
         }
     }
 }
