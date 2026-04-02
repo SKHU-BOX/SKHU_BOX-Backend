@@ -20,6 +20,15 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.fail(errorMessage));
     }
 
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException e) {
+        ErrorCode errorCode = e.getErrorCode();
+        log.error("BusinessException [{}]: {}", errorCode.getCode(), errorCode.getMessage());
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ApiResponse.fail(errorCode.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Object>> handleIllegalArgumentException(IllegalArgumentException e) {
         log.error("IllegalArgumentException: ", e);
@@ -31,9 +40,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleException(Exception e) {
         log.error("Internal Server Error: ", e);
-        String errorMessage = e.getClass().getSimpleName() + ": " + e.getMessage();
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.fail("서버 내부 오류가 발생했습니다: " + errorMessage));
+                .body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
     }
 }

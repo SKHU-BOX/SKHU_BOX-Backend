@@ -1,8 +1,13 @@
 package com.example.skhubox.exception;
 
-public class BusinessException extends RuntimeException {
+import lombok.Getter;
 
-    public BusinessException(String message) {
-        super(message);
+@Getter
+public class BusinessException extends RuntimeException {
+    private final ErrorCode errorCode;
+
+    public BusinessException(ErrorCode errorCode) {
+        super(errorCode.getMessage());
+        this.errorCode = errorCode;
     }
 }
