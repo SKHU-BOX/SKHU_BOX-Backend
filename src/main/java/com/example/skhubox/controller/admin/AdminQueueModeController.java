@@ -4,10 +4,12 @@ import com.example.skhubox.dto.ApiResponse;
 import com.example.skhubox.dto.admin.QueueModeResponse;
 import com.example.skhubox.dto.admin.QueueModeUpdateRequest;
 import com.example.skhubox.service.QueueModeSettingService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Admin Queue Mode", description = "관리자 대기열 모드 설정 API")
 @RestController
 @RequestMapping("/api/admin/queue-mode")
 @RequiredArgsConstructor
