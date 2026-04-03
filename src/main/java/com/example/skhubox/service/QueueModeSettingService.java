@@ -3,6 +3,7 @@ package com.example.skhubox.service;
 import com.example.skhubox.domain.queue.QueueModeSetting;
 import com.example.skhubox.dto.admin.QueueModeResponse;
 import com.example.skhubox.repository.QueueModeSettingRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,13 @@ public class QueueModeSettingService {
     private static final Long QUEUE_MODE_SETTING_ID = 1L;
 
     private final QueueModeSettingRepository queueModeSettingRepository;
+
+    @PostConstruct
+    public void init() {
+        if (!queueModeSettingRepository.existsById(QUEUE_MODE_SETTING_ID)) {
+            queueModeSettingRepository.save(new QueueModeSetting(QUEUE_MODE_SETTING_ID, false));
+        }
+    }
 
     @Transactional(readOnly = true)
     public QueueModeResponse getQueueMode() {
