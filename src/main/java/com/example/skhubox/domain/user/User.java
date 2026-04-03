@@ -46,4 +46,8 @@ public class User {
     public void changeRole(UserRole role) {
         this.role = role;
     }
+
+    public void assignAdminRole() {
+        this.role = UserRole.ADMIN;
+    }
 }

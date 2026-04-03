@@ -47,6 +47,11 @@ public class AuthService {
                 passwordEncoder.encode(request.getPassword())
         );
 
+        // 테스트용 관리자 계정 생성 로직 (학번이 999999999인 경우)
+        if ("999999999".equals(request.getStudentNumber())) {
+            user.assignAdminRole();
+        }
+
         userRepository.save(user);
     }
 
