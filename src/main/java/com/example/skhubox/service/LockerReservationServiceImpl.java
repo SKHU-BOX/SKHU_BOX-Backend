@@ -10,9 +10,9 @@ import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.LockerRepository;
 import com.example.skhubox.repository.UserRepository;
+import com.example.skhubox.repository.LockerReservationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.skhubox.repository.LockerReservationRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,17 +24,24 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     private final UserRepository userRepository;
     private final LockerRepository lockerRepository;
     private final LockerReservationRepository lockerReservationRepository;
+    private final QueueModeSettingService queueModeSettingService;
 
     public LockerReservationServiceImpl(UserRepository userRepository,
                                         LockerRepository lockerRepository,
-                                        LockerReservationRepository lockerReservationRepository) {
+                                        LockerReservationRepository lockerReservationRepository,
+                                        QueueModeSettingService queueModeSettingService) {
         this.userRepository = userRepository;
         this.lockerRepository = lockerRepository;
         this.lockerReservationRepository = lockerReservationRepository;
+        this.queueModeSettingService = queueModeSettingService;
     }
 
     @Override
     public LockerReservationResponse reserveLocker(String studentNumber, Long lockerId) {
+        if (queueModeSettingService.isQueueModeEnabled()) {
+            throw new BusinessException(ErrorCode.QUEUE_MODE_RESERVATION_BLOCKED);
+        }
+
         User user = getUser(studentNumber);
         Locker locker = getLockedLocker(lockerId);
 
@@ -49,7 +56,7 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     @Override
     public LockerReservationResponse returnLocker(String studentNumber) {
         User user = getUser(studentNumber);
-        
+
         LockerReservation reservation = lockerReservationRepository
                 .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
@@ -78,10 +85,10 @@ public class LockerReservationServiceImpl implements LockerReservationService {
         Long firstId = Math.min(currentLockerId, newLockerId);
         Long secondId = Math.max(currentLockerId, newLockerId);
 
-        getLockedLocker(firstId);
+        Locker firstLocker = getLockedLocker(firstId);
         Locker secondLocker = getLockedLocker(secondId);
 
-        Locker newLocker = (firstId.equals(newLockerId)) ? getLockedLocker(firstId) : secondLocker;
+        Locker newLocker = firstId.equals(newLockerId) ? firstLocker : secondLocker;
 
         validateNewLocker(newLocker);
 
@@ -100,6 +107,7 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 .map(LockerResponse::from)
                 .collect(Collectors.toList());
     }
+
     @Override
     @Transactional(readOnly = true)
     public LockerReservationResponse getMyReservation(String studentNumber) {

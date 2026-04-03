@@ -30,12 +30,24 @@ public class User {
     @Column(length = 50)
     private String department;
 
-    public User(String studentNumber, String name, String email, String department,String password) {
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role;
+
+    public User(String studentNumber, String name, String email, String department, String password) {
         this.studentNumber = studentNumber;
         this.name = name;
         this.email = email;
         this.department = department;
         this.password = password;
+        this.role = UserRole.USER;
+    }
 
+    public void changeRole(UserRole role) {
+        this.role = role;
+    }
+
+    public void assignAdminRole() {
+        this.role = UserRole.ADMIN;
     }
 }

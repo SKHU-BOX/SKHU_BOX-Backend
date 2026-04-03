@@ -7,9 +7,12 @@ import com.example.skhubox.dto.auth.SignupRequest;
 import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.UserRepository;
+import com.example.skhubox.security.CustomUserDetails;
 import com.example.skhubox.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.*;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,6 +47,11 @@ public class AuthService {
                 passwordEncoder.encode(request.getPassword())
         );
 
+        // 테스트용 관리자 계정 생성 로직 (학번이 999999999인 경우)
+        if ("999999999".equals(request.getStudentNumber())) {
+            user.assignAdminRole();
+        }
+
         userRepository.save(user);
     }
 
@@ -60,7 +68,14 @@ public class AuthService {
             );
 
             String token = jwtTokenProvider.createToken(authentication);
-            return new LoginResponse(token, "Bearer");
+
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+            return new LoginResponse(
+                    token,
+                    "Bearer",
+                    userDetails.getUser().getRole().name()
+            );
         } catch (BadCredentialsException e) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         } catch (AuthenticationException e) {
