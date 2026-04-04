@@ -3,12 +3,16 @@ package com.example.skhubox.controller;
 import com.example.skhubox.dto.ApiResponse;
 import com.example.skhubox.dto.LockerChangeRequest;
 import com.example.skhubox.dto.LockerReservationResponse;
+import com.example.skhubox.dto.LockerResponse;
 import com.example.skhubox.dto.LockerReserveRequest;
+import com.example.skhubox.security.CustomUserDetails;
 import com.example.skhubox.service.LockerReservationService;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/lockers")
@@ -20,12 +24,27 @@ public class LockerReservationController {
         this.lockerReservationService = lockerReservationService;
     }
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<LockerResponse>>> getAllLockers() {
+        List<LockerResponse> response = lockerReservationService.getAllLockers();
+        return ResponseEntity.ok(ApiResponse.ok("전체 사물함 목록 조회 성공", response));
+    }
+
+    @GetMapping("/my-reservation")
+    public ResponseEntity<ApiResponse<LockerReservationResponse>> getMyReservation(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        String studentNumber = userDetails.getUsername();
+        LockerReservationResponse response = lockerReservationService.getMyReservation(studentNumber);
+        return ResponseEntity.ok(ApiResponse.ok("내 예약 정보 조회 성공", response));
+    }
+
     @PostMapping("/reserve")
     public ResponseEntity<ApiResponse<LockerReservationResponse>> reserveLocker(
             @RequestBody LockerReserveRequest request,
-            @Parameter(hidden = true) Authentication authentication
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        String studentNumber = authentication.getName();
+        String studentNumber = userDetails.getUsername();
 
         LockerReservationResponse response =
                 lockerReservationService.reserveLocker(studentNumber, request.getLockerId());
@@ -35,9 +54,9 @@ public class LockerReservationController {
 
     @PostMapping("/return")
     public ResponseEntity<ApiResponse<LockerReservationResponse>> returnLocker(
-            @Parameter(hidden = true) Authentication authentication
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        String studentNumber = authentication.getName();
+        String studentNumber = userDetails.getUsername();
         LockerReservationResponse response =
                 lockerReservationService.returnLocker(studentNumber);
 
@@ -47,9 +66,9 @@ public class LockerReservationController {
     @PostMapping("/change")
     public ResponseEntity<ApiResponse<LockerReservationResponse>> changeLocker(
             @RequestBody LockerChangeRequest request,
-            @Parameter(hidden = true) Authentication authentication
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        String studentNumber = authentication.getName();
+        String studentNumber = userDetails.getUsername();
         LockerReservationResponse response =
                 lockerReservationService.changeLocker(studentNumber, request.getNewLockerId());
 

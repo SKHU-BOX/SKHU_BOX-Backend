@@ -5,6 +5,7 @@ import com.example.skhubox.dto.auth.LoginRequest;
 import com.example.skhubox.dto.auth.LoginResponse;
 import com.example.skhubox.dto.auth.SignupRequest;
 import com.example.skhubox.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +20,7 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<Object>> signup(@RequestBody SignupRequest request) {
+    public ResponseEntity<ApiResponse<Object>> signup(@Valid @RequestBody SignupRequest request) {
         authService.signup(request);
         return ResponseEntity.ok(ApiResponse.ok("회원가입 성공", null));
     }

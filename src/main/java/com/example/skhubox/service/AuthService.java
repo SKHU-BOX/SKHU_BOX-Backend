@@ -4,39 +4,39 @@ import com.example.skhubox.domain.user.User;
 import com.example.skhubox.dto.auth.LoginRequest;
 import com.example.skhubox.dto.auth.LoginResponse;
 import com.example.skhubox.dto.auth.SignupRequest;
+import com.example.skhubox.exception.BusinessException;
+import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.UserRepository;
+import com.example.skhubox.security.CustomUserDetails;
 import com.example.skhubox.security.jwt.JwtTokenProvider;
-import org.springframework.security.authentication.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
+@Transactional
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthService(UserRepository userRepository,
-                       PasswordEncoder passwordEncoder,
-                       AuthenticationManager authenticationManager,
-                       JwtTokenProvider jwtTokenProvider) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.authenticationManager = authenticationManager;
-        this.jwtTokenProvider = jwtTokenProvider;
-    }
-
     public void signup(SignupRequest request) {
-        if (userRepository.findByStudentNumber(request.getStudentNumber()).isPresent()) {
-            throw new IllegalArgumentException("이미 존재하는 학번입니다.");
+        if (userService.existsByStudentNumber(request.getStudentNumber())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_STUDENT_NUMBER);
         }
 
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
+        if (userService.existsByEmail(request.getEmail())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
         User user = new User(
@@ -47,10 +47,18 @@ public class AuthService {
                 passwordEncoder.encode(request.getPassword())
         );
 
+        // 테스트용 관리자 계정 생성 로직 (학번이 999999999인 경우)
+        if ("999999999".equals(request.getStudentNumber())) {
+            user.assignAdminRole();
+        }
+
         userRepository.save(user);
     }
 
+    @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
+        userService.findByStudentNumber(request.getStudentNumber());
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -60,15 +68,18 @@ public class AuthService {
             );
 
             String token = jwtTokenProvider.createToken(authentication);
-            return new LoginResponse(token, "Bearer");
+
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+            return new LoginResponse(
+                    token,
+                    "Bearer",
+                    userDetails.getUser().getRole().name()
+            );
         } catch (BadCredentialsException e) {
-            throw new IllegalArgumentException("학번 또는 비밀번호가 일치하지 않습니다.");
-        } catch (DisabledException e) {
-            throw new IllegalArgumentException("계정이 비활성화되었습니다.");
-        } catch (LockedException e) {
-            throw new IllegalArgumentException("계정이 잠겨 있습니다.");
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         } catch (AuthenticationException e) {
-            throw new IllegalArgumentException("로그인 인증에 실패했습니다.");
+            throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
     }
 }
