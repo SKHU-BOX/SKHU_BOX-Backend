@@ -5,8 +5,10 @@ import com.example.skhubox.dto.LockerChangeRequest;
 import com.example.skhubox.dto.LockerReservationResponse;
 import com.example.skhubox.dto.LockerResponse;
 import com.example.skhubox.dto.LockerReserveRequest;
+import com.example.skhubox.dto.QueueResponse;
 import com.example.skhubox.security.CustomUserDetails;
 import com.example.skhubox.service.LockerReservationService;
+import com.example.skhubox.service.WaitingQueueService;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,9 +21,11 @@ import java.util.List;
 public class LockerReservationController {
 
     private final LockerReservationService lockerReservationService;
+    private final WaitingQueueService waitingQueueService;
 
-    public LockerReservationController(LockerReservationService lockerReservationService) {
+    public LockerReservationController(LockerReservationService lockerReservationService, WaitingQueueService waitingQueueService) {
         this.lockerReservationService = lockerReservationService;
+        this.waitingQueueService = waitingQueueService;
     }
 
     @GetMapping
@@ -37,6 +41,16 @@ public class LockerReservationController {
         String studentNumber = userDetails.getUsername();
         LockerReservationResponse response = lockerReservationService.getMyReservation(studentNumber);
         return ResponseEntity.ok(ApiResponse.ok("내 예약 정보 조회 성공", response));
+    }
+
+    @GetMapping("/queue/my-rank")
+    public ResponseEntity<ApiResponse<QueueResponse>> getMyRank(
+            @RequestParam Long lockerId,
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        String studentNumber = userDetails.getUsername();
+        Long rank = waitingQueueService.getRank(studentNumber, lockerId);
+        return ResponseEntity.ok(ApiResponse.ok("내 순번 조회 성공", QueueResponse.of(lockerId, rank, "현재 순번: " + rank)));
     }
 
     @PostMapping("/reserve")
