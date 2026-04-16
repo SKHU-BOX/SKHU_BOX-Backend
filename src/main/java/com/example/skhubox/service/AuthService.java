@@ -1,5 +1,6 @@
 package com.example.skhubox.service;
 
+import com.example.skhubox.domain.user.User;
 import com.example.skhubox.dto.auth.LoginRequest;
 import com.example.skhubox.dto.auth.LoginResponse;
 import com.example.skhubox.dto.auth.SignupRequest;
