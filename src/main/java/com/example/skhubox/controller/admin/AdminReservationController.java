@@ -28,6 +28,6 @@ public class AdminReservationController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime newExpiryDate) {
         
         lockerReservationService.updateExpiryDate(reservationId, newExpiryDate);
-        return ResponseEntity.ok(ApiResponse.success(null, "만료일이 성공적으로 수정되었습니다."));
+        return ResponseEntity.ok(ApiResponse.ok("만료일이 성공적으로 수정되었습니다.", null));
     }
 }
