@@ -44,7 +44,7 @@ public class Locker extends BaseEntity {
 
     // 예약 관련 상태 변경
     public void occupy(java.time.LocalDateTime expiredAt) {
-        this.status = LockerStatus.OCCUPIED;
+        this.status = LockerStatus.ACTIVE;
         this.expiredAt = expiredAt;
     }
 
