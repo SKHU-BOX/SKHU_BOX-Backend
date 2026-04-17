@@ -33,4 +33,21 @@ public class WaitingQueueServiceImpl implements WaitingQueueService {
         Long rank = redisTemplate.opsForZSet().rank(key, studentNumber);
         return (rank != null) ? rank + 1 : null;
     }
+
+    @Override
+    public boolean isFirstUser(String studentNumber, Long lockerId) {
+        String key = QUEUE_KEY_PREFIX + lockerId;
+        // zrange(key, 0, 0) 으로 가장 첫 번째 사용자 확인
+        java.util.Set<String> members = redisTemplate.opsForZSet().range(key, 0, 0);
+        if (members == null || members.isEmpty()) {
+            return false;
+        }
+        return members.iterator().next().equals(studentNumber);
+    }
+
+    @Override
+    public void removeFromQueue(String studentNumber, Long lockerId) {
+        String key = QUEUE_KEY_PREFIX + lockerId;
+        redisTemplate.opsForZSet().remove(key, studentNumber);
+    }
 }

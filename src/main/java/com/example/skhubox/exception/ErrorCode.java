@@ -25,6 +25,7 @@ public enum ErrorCode {
     SAME_LOCKER_CHANGE(HttpStatus.BAD_REQUEST, "L006", "동일한 사물함으로 변경할 수 없습니다."),
     QUEUE_MODE_RESERVATION_BLOCKED(HttpStatus.BAD_REQUEST, "L007", "현재 대기열 모드가 활성화되어 있어 바로 예약할 수 없습니다. 대기열을 통해 진행해주세요."),
     RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "L008", "해당 예약 정보를 찾을 수 없습니다."),
+    LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "L009", "예약 처리 중 충돌이 발생했습니다. 다시 시도해주세요."),
 
     QUEUE_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "Q001", "대기열 모드 설정 정보를 찾을 수 없습니다.");
 
