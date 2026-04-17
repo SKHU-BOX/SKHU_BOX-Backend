@@ -138,9 +138,11 @@ public class LockerReservationServiceImpl implements LockerReservationService {
         try {
             currentReservation.returnReservation();
             LockerReservation newReservation = new LockerReservation(user, newLocker);
+            // 만료일은 이전 예약의 것을 그대로 따르거나 새로 계산 (여기서는 새로 계산된 것이 들어가도록 엔티티 생성자 활용)
             LockerReservation savedReservation = lockerReservationRepository.saveAndFlush(newReservation);
             
-            log.info("[Change-Success] User {} changed locker from {} to {}.", studentNumber, currentLockerId, newLockerId);
+            log.info("[Change-Success] User {} changed locker from {} to {}. New Expiry: {}", 
+                    studentNumber, currentLockerId, newLockerId, savedReservation.getExpiredAt());
             return toResponse(savedReservation, "사물함 변경이 완료되었습니다.");
         } catch (DataIntegrityViolationException e) {
             log.error("[Change-Failed] Concurrent DB change to locker {}: {}", newLockerId, e.getMessage());
