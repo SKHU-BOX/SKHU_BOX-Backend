@@ -4,6 +4,7 @@ import com.example.skhubox.dto.ApiResponse;
 import com.example.skhubox.dto.admin.QueueModeResponse;
 import com.example.skhubox.dto.admin.QueueModeUpdateRequest;
 import com.example.skhubox.service.QueueModeSettingService;
+import com.example.skhubox.service.WaitingQueueService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminQueueModeController {
 
     private final QueueModeSettingService queueModeSettingService;
+    private final WaitingQueueService waitingQueueService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<QueueModeResponse>> getQueueMode() {
@@ -33,5 +35,11 @@ public class AdminQueueModeController {
                 : "대기열 모드가 비활성화되었습니다.";
 
         return ResponseEntity.ok(ApiResponse.ok(message, response));
+    }
+
+    @PostMapping("/{lockerId}/skip")
+    public ResponseEntity<ApiResponse<Void>> skipFirstUser(@PathVariable Long lockerId) {
+        waitingQueueService.skipFirstUser(lockerId);
+        return ResponseEntity.ok(ApiResponse.ok("대기열 1순위 사용자를 스킵했습니다.", null));
     }
 }
