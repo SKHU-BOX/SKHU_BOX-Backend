@@ -13,16 +13,20 @@ import com.example.skhubox.repository.LockerRepository;
 import com.example.skhubox.repository.UserRepository;
 import com.example.skhubox.repository.LockerReservationRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class LockerReservationServiceImpl implements LockerReservationService {
 
     private final UserRepository userRepository;
@@ -30,30 +34,61 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     private final LockerReservationRepository lockerReservationRepository;
     private final QueueModeSettingService queueModeSettingService;
     private final WaitingQueueService waitingQueueService;
+    private final RedisTemplate<String, String> redisTemplate;
+
+    private static final String LOCK_PREFIX = "lock:locker:";
 
     @Override
     public LockerReservationResponse reserveLocker(String studentNumber, Long lockerId) {
-        // 0. 대기열 모드 체크
-        if (queueModeSettingService.isQueueModeEnabled()) {
-            // 대기열 등록 후 결과 반환 (현재는 에러로 던지지만, 실제로는 DTO에 대기열 정보를 담아 보낼 수 있음)
-            // 지시사항에 따라 에러를 던지지 않고 정보를 반환하려면 리턴 타입 변경이 필요함.
-            // 일단은 에러 메시지에 순번을 포함시켜서 친절하게 알려주는 방식으로 임시 구현.
-            QueueResponse queueResponse = waitingQueueService.register(studentNumber, lockerId);
-            throw new BusinessException(ErrorCode.QUEUE_MODE_RESERVATION_BLOCKED, 
-                "현재 대기열 모드입니다. 대기열에 등록되었습니다. 내 순번: " + queueResponse.getRank() + "번");
+        String lockKey = LOCK_PREFIX + lockerId;
+        Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", 5, TimeUnit.SECONDS);
+        
+        if (Boolean.FALSE.equals(acquired)) {
+            log.warn("[Concurrency] Lock acquisition failed for locker {} by user {}", lockerId, studentNumber);
+            throw new BusinessException(ErrorCode.LOCK_ACQUISITION_FAILED);
         }
 
-        User user = getUser(studentNumber);
-        Locker locker = getLockedLocker(lockerId);
-
-        validateReservable(user, locker);
-
         try {
-            LockerReservation reservation = new LockerReservation(user, locker);
-            LockerReservation savedReservation = lockerReservationRepository.saveAndFlush(reservation);
-            return toResponse(savedReservation, "사물함 예약이 완료되었습니다.");
-        } catch (DataIntegrityViolationException e) {
-            throw new BusinessException(ErrorCode.ALREADY_RESERVED_LOCKER);
+            if (queueModeSettingService.isQueueModeEnabled()) {
+                Long myRank = waitingQueueService.getRank(studentNumber, lockerId);
+
+                if (myRank == null) {
+                    QueueResponse queueResponse = waitingQueueService.register(studentNumber, lockerId);
+                    log.info("[Queue] User {} auto-registered for locker {}. Rank: {}", 
+                            studentNumber, lockerId, queueResponse.getRank());
+                    throw new BusinessException(ErrorCode.QUEUE_MODE_RESERVATION_BLOCKED,
+                            "현재 대기열 모드입니다. 대기열에 등록되었습니다. 내 순번: " + queueResponse.getRank() + "번");
+                }
+
+                if (!waitingQueueService.isFirstUser(studentNumber, lockerId)) {
+                    log.warn("[Queue] User {} tried to reserve but is NOT first for locker {}. My Rank: {}", 
+                            studentNumber, lockerId, myRank);
+                    throw new BusinessException(ErrorCode.QUEUE_MODE_RESERVATION_BLOCKED,
+                            "아직 본인 차례가 아닙니다. 현재 순번: " + myRank + "번");
+                }
+            }
+
+            User user = getUser(studentNumber);
+            Locker locker = getLockedLocker(lockerId);
+
+            validateReservable(user, locker);
+
+            try {
+                LockerReservation reservation = new LockerReservation(user, locker);
+                LockerReservation savedReservation = lockerReservationRepository.saveAndFlush(reservation);
+
+                if (queueModeSettingService.isQueueModeEnabled()) {
+                    waitingQueueService.removeFromQueue(studentNumber, lockerId);
+                }
+
+                log.info("[Reservation-Success] User {} successfully reserved locker {}.", studentNumber, lockerId);
+                return toResponse(savedReservation, "사물함 예약이 완료되었습니다.");
+            } catch (DataIntegrityViolationException e) {
+                log.error("[Reservation-Failed] Concurrent DB reservation for locker {}: {}", lockerId, e.getMessage());
+                throw new BusinessException(ErrorCode.ALREADY_RESERVED_LOCKER);
+            }
+        } finally {
+            redisTemplate.delete(lockKey);
         }
     }
 
@@ -65,10 +100,12 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
 
-        getLockedLocker(reservation.getLocker().getId());
+        Long lockerId = reservation.getLocker().getId();
+        getLockedLocker(lockerId);
 
         reservation.returnReservation();
 
+        log.info("[Return-Success] User {} returned locker {}.", studentNumber, lockerId);
         return toResponse(reservation, "사물함 반납이 완료되었습니다.");
     }
 
@@ -100,8 +137,11 @@ public class LockerReservationServiceImpl implements LockerReservationService {
             currentReservation.returnReservation();
             LockerReservation newReservation = new LockerReservation(user, newLocker);
             LockerReservation savedReservation = lockerReservationRepository.saveAndFlush(newReservation);
+            
+            log.info("[Change-Success] User {} changed locker from {} to {}.", studentNumber, currentLockerId, newLockerId);
             return toResponse(savedReservation, "사물함 변경이 완료되었습니다.");
         } catch (DataIntegrityViolationException e) {
+            log.error("[Change-Failed] Concurrent DB change to locker {}: {}", newLockerId, e.getMessage());
             throw new BusinessException(ErrorCode.ALREADY_RESERVED_LOCKER);
         }
     }
@@ -168,6 +208,7 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 reservation.getUser().getId(),
                 reservation.getLocker().getId(),
                 reservation.getStatus().name(),
+                reservation.getExpiredAt() != null ? reservation.getExpiredAt().toString() : null,
                 message
         );
     }
