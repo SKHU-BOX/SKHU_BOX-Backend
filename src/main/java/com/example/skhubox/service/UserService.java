@@ -42,7 +42,6 @@ public class UserService {
     }
 
     public boolean existsByStudentNumber(String studentNumber) {
-...
         return userRepository.existsByStudentNumber(studentNumber);
     }
 
