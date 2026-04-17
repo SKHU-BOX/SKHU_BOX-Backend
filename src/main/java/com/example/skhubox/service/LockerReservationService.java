@@ -3,6 +3,7 @@ package com.example.skhubox.service;
 import com.example.skhubox.dto.LockerReservationResponse;
 import com.example.skhubox.dto.LockerResponse;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface LockerReservationService {
