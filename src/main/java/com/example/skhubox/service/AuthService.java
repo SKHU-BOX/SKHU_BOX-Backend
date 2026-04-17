@@ -84,6 +84,11 @@ public class AuthService {
     public void sendVerificationCode(EmailRequest request) {
         String email = request.getEmail();
 
+        // 학교 이메일 도메인 체크
+        if (!email.endsWith("@office.skhu.ac.kr")) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
         // 이미 가입된 이메일인지 체크
         if (userService.existsByEmail(email)) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
