@@ -66,4 +66,8 @@ public class LockerReservation extends BaseEntity {
     public void expire() {
         this.status = ReservationStatus.EXPIRED;
     }
+
+    public void updateExpiryDate(LocalDateTime newExpiryDate) {
+        this.expiredAt = newExpiryDate;
+    }
 }

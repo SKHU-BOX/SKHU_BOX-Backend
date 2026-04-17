@@ -166,6 +166,15 @@ public class LockerReservationServiceImpl implements LockerReservationService {
         return toResponse(reservation, "현재 예약 정보 조회 성공");
     }
 
+    @Override
+    public void updateExpiryDate(Long reservationId, LocalDateTime newExpiryDate) {
+        LockerReservation reservation = lockerReservationRepository.findById(reservationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+        
+        reservation.updateExpiryDate(newExpiryDate);
+        log.info("[Admin] Updated expiry date for reservation {} to {}", reservationId, newExpiryDate);
+    }
+
     // --- Private Helper Methods ---
 
     private User getUser(String studentNumber) {
