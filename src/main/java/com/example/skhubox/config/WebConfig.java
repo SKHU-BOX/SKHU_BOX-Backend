@@ -15,6 +15,6 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(loggingInterceptor)
                 .addPathPatterns("/**") // 모든 경로에 대해 적용
-                .excludePathPatterns("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html"); // 스웨거 관련 로그는 제외 (선택 사항)
+                .excludePathPatterns("/swagger-ui/**", "/v3/api-docs/**", "/docs"); // 스웨거 관련 로그는 제외 (선택 사항)
     }
 }
