@@ -23,10 +23,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException e) {
         ErrorCode errorCode = e.getErrorCode();
-        log.error("BusinessException [{}]: {}", errorCode.getCode(), errorCode.getMessage());
+        String message = (e.getMessage() != null && !e.getMessage().isEmpty()) 
+                ? e.getMessage() : errorCode.getMessage();
+        
+        // HTTP 상태 코드에 따라 로그 레벨 조정
+        if (errorCode.getStatus().is5xxServerError()) {
+            log.error("[BusinessException] {}: {}", errorCode.getCode(), message);
+        } else {
+            log.warn("[BusinessException] {}: {}", errorCode.getCode(), message);
+        }
+
         return ResponseEntity
                 .status(errorCode.getStatus())
-                .body(ApiResponse.fail(errorCode.getMessage()));
+                .body(ApiResponse.fail(message));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
