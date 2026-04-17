@@ -55,18 +55,19 @@ public class LockerReservationServiceImpl implements LockerReservationService {
 
                 if (myRank == null) {
                     QueueResponse queueResponse = waitingQueueService.register(studentNumber, lockerId);
+                    myRank = queueResponse.getRank();
                     log.info("[Queue] User {} auto-registered for locker {}. Rank: {}", 
-                            studentNumber, lockerId, queueResponse.getRank());
-                    throw new BusinessException(ErrorCode.QUEUE_MODE_RESERVATION_BLOCKED,
-                            "현재 대기열 모드입니다. 대기열에 등록되었습니다. 내 순번: " + queueResponse.getRank() + "번");
+                            studentNumber, lockerId, myRank);
                 }
 
                 if (!waitingQueueService.isFirstUser(studentNumber, lockerId)) {
-                    log.warn("[Queue] User {} tried to reserve but is NOT first for locker {}. My Rank: {}", 
+                    log.warn("[Queue] User {} is in queue but NOT first for locker {}. Current Rank: {}", 
                             studentNumber, lockerId, myRank);
                     throw new BusinessException(ErrorCode.QUEUE_MODE_RESERVATION_BLOCKED,
-                            "아직 본인 차례가 아닙니다. 현재 순번: " + myRank + "번");
+                            "현재 대기열 모드입니다. 대기열에 등록되었습니다. 아직 본인 차례가 아닙니다. 내 순번: " + myRank + "번");
                 }
+                
+                log.info("[Queue] User {} is FIRST in queue for locker {}. Proceeding to reservation.", studentNumber, lockerId);
             }
 
             User user = getUser(studentNumber);
