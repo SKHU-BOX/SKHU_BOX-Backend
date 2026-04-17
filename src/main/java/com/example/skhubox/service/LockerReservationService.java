@@ -18,4 +18,5 @@ public interface LockerReservationService {
 
     LockerReservationResponse getMyReservation(String studentNumber);
     void updateExpiryDate(Long reservationId, LocalDateTime newExpiryDate);
+    void updateAllActiveExpirations(LocalDateTime newExpiryDate);
 }

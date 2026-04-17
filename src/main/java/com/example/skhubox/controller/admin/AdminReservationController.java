@@ -30,4 +30,13 @@ public class AdminReservationController {
         lockerReservationService.updateExpiryDate(reservationId, newExpiryDate);
         return ResponseEntity.ok(ApiResponse.ok("만료일이 성공적으로 수정되었습니다.", null));
     }
+
+    @Operation(summary = "전체 예약 만료일 일괄 수정", description = "현재 사용 중인 모든 사물함의 만료 기한을 한 번에 수정합니다.")
+    @PatchMapping("/expiry/all")
+    public ResponseEntity<ApiResponse<Void>> updateAllExpirations(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime newExpiryDate) {
+        
+        lockerReservationService.updateAllActiveExpirations(newExpiryDate);
+        return ResponseEntity.ok(ApiResponse.ok("모든 예약의 만료일이 성공적으로 수정되었습니다.", null));
+    }
 }

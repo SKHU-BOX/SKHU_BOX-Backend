@@ -189,6 +189,19 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 reservationId, reservation.getLocker().getId(), newExpiryDate);
     }
 
+    @Override
+    @Transactional
+    public void updateAllActiveExpirations(LocalDateTime newExpiryDate) {
+        List<LockerReservation> activeReservations = lockerReservationRepository.findAllByStatus(ReservationStatus.ACTIVE);
+        
+        for (LockerReservation reservation : activeReservations) {
+            reservation.updateExpiryDate(newExpiryDate);
+            reservation.getLocker().occupy(newExpiryDate);
+        }
+        
+        log.info("[Admin] Bulk updated {} active reservations to expiry date: {}", activeReservations.size(), newExpiryDate);
+    }
+
     // --- Private Helper Methods ---
 
     private User getUser(String studentNumber) {

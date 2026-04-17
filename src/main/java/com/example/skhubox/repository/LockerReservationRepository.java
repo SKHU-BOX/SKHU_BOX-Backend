@@ -16,5 +16,7 @@ public interface LockerReservationRepository extends JpaRepository<LockerReserva
 
     Optional<LockerReservation> findByLocker_IdAndStatus(Long lockerId, ReservationStatus status);
 
+    List<LockerReservation> findAllByStatus(ReservationStatus status);
+
     long countByLocker_IdAndStatus(Long lockerId, ReservationStatus status);
 }
