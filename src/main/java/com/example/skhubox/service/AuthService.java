@@ -83,6 +83,12 @@ public class AuthService {
 
     public void sendVerificationCode(EmailRequest request) {
         String email = request.getEmail();
+
+        // 이미 가입된 이메일인지 체크
+        if (userService.existsByEmail(email)) {
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
         String code = generateCode();
 
         // Redis에 코드 저장 (5분간 유효)
