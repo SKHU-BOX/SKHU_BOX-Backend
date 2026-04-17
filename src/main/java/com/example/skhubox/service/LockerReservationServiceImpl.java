@@ -79,6 +79,9 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 LockerReservation reservation = new LockerReservation(user, locker);
                 LockerReservation savedReservation = lockerReservationRepository.saveAndFlush(reservation);
 
+                // 사물함 자체 상태 업데이트
+                locker.occupy(savedReservation.getExpiredAt());
+
                 if (queueModeSettingService.isQueueModeEnabled()) {
                     waitingQueueService.removeFromQueue(studentNumber, lockerId);
                 }
@@ -103,9 +106,10 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
 
         Long lockerId = reservation.getLocker().getId();
-        getLockedLocker(lockerId);
+        Locker locker = getLockedLocker(lockerId);
 
         reservation.returnReservation();
+        locker.release();
 
         log.info("[Return-Success] User {} returned locker {}.", studentNumber, lockerId);
         return toResponse(reservation, "사물함 반납이 완료되었습니다.");
@@ -136,10 +140,14 @@ public class LockerReservationServiceImpl implements LockerReservationService {
         validateNewLocker(newLocker);
 
         try {
+            Locker oldLocker = currentReservation.getLocker();
             currentReservation.returnReservation();
+            oldLocker.release();
+
             LockerReservation newReservation = new LockerReservation(user, newLocker);
             // 만료일은 이전 예약의 것을 그대로 따르거나 새로 계산 (여기서는 새로 계산된 것이 들어가도록 엔티티 생성자 활용)
             LockerReservation savedReservation = lockerReservationRepository.saveAndFlush(newReservation);
+            newLocker.occupy(savedReservation.getExpiredAt());
             
             log.info("[Change-Success] User {} changed locker from {} to {}. New Expiry: {}", 
                     studentNumber, currentLockerId, newLockerId, savedReservation.getExpiredAt());
@@ -176,7 +184,9 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
         
         reservation.updateExpiryDate(newExpiryDate);
-        log.info("[Admin] Updated expiry date for reservation {} to {}", reservationId, newExpiryDate);
+        reservation.getLocker().occupy(newExpiryDate); // 사물함 테이블의 만료일도 동기화
+        log.info("[Admin] Updated expiry date for reservation {} and locker {} to {}", 
+                reservationId, reservation.getLocker().getId(), newExpiryDate);
     }
 
     // --- Private Helper Methods ---
