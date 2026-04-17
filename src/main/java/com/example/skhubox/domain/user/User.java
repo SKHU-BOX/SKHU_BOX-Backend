@@ -50,4 +50,8 @@ public class User {
     public void assignAdminRole() {
         this.role = UserRole.ADMIN;
     }
+
+    public void assignUserRole() {
+        this.role = UserRole.USER;
+    }
 }
