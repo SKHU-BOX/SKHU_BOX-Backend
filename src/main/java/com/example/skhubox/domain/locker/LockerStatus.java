@@ -8,7 +8,8 @@ import lombok.RequiredArgsConstructor;
 public enum LockerStatus {
     NORMAL("정상"),
     BROKEN("고장"),
-    DISABLED("사용불가");
+    DISABLED("사용불가"),
+    ACTIVE("사용중");
 
     private final String description;
 }

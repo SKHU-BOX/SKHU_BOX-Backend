@@ -32,12 +32,25 @@ public class Locker extends BaseEntity {
     @Column(nullable = false)
     private LockerStatus status;
 
+    private java.time.LocalDateTime expiredAt;
+
     public Locker(String building, int floor, String locationDetail, String lockerNumber) {
         this.building = building;
         this.floor = floor;
         this.locationDetail = locationDetail;
         this.lockerNumber = lockerNumber;
         this.status = LockerStatus.NORMAL;
+    }
+
+    // 예약 관련 상태 변경
+    public void occupy(java.time.LocalDateTime expiredAt) {
+        this.status = LockerStatus.ACTIVE;
+        this.expiredAt = expiredAt;
+    }
+
+    public void release() {
+        this.status = LockerStatus.NORMAL;
+        this.expiredAt = null;
     }
 
     // 물리적 상태 변경 로직 (관리자용)
