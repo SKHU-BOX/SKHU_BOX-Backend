@@ -35,6 +35,7 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     private final LockerReservationRepository lockerReservationRepository;
     private final QueueModeSettingService queueModeSettingService;
     private final WaitingQueueService waitingQueueService;
+    private final NotificationService notificationService;
     private final RedisTemplate<String, String> redisTemplate;
 
     private static final String LOCK_PREFIX = "lock:locker:";
@@ -85,6 +86,15 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 if (queueModeSettingService.isQueueModeEnabled()) {
                     waitingQueueService.removeFromQueue(studentNumber, lockerId);
                 }
+
+                // 알림 생성
+                notificationService.createNotification(
+                        user,
+                        "사물함 예약 완료",
+                        String.format("[%s] %s번 사물함 예약이 완료되었습니다. 만료일: %s", 
+                                locker.getBuilding(), locker.getLockerNumber(), savedReservation.getExpiredAt().toLocalDate()),
+                        com.example.skhubox.domain.notification.NotificationType.RESERVATION
+                );
 
                 log.info("[Reservation-Success] User {} successfully reserved locker {}.", studentNumber, lockerId);
                 return toResponse(savedReservation, "사물함 예약이 완료되었습니다.");
