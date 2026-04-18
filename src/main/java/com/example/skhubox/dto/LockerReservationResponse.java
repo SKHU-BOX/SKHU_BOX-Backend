@@ -11,16 +11,18 @@ public class LockerReservationResponse {
     private Long userId;
     private Long lockerId;
     private String status;
+    private String expiredAt;
     private String message;
 
     public LockerReservationResponse() {
     }
 
-    public LockerReservationResponse(Long reservationId, Long userId, Long lockerId, String status, String message) {
+    public LockerReservationResponse(Long reservationId, Long userId, Long lockerId, String status, String expiredAt, String message) {
         this.reservationId = reservationId;
         this.userId = userId;
         this.lockerId = lockerId;
         this.status = status;
+        this.expiredAt = expiredAt;
         this.message = message;
     }
 

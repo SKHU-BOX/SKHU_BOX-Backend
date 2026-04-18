@@ -2,6 +2,7 @@ package com.example.skhubox.service;
 
 import com.example.skhubox.domain.complaint.Complaint;
 import com.example.skhubox.domain.user.User;
+import com.example.skhubox.domain.user.UserRole;
 import com.example.skhubox.dto.complaint.ComplaintAnswerRequest;
 import com.example.skhubox.dto.complaint.ComplaintRequest;
 import com.example.skhubox.dto.complaint.ComplaintResponse;
@@ -23,6 +24,7 @@ public class ComplaintServiceImpl implements ComplaintService {
 
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -37,6 +39,18 @@ public class ComplaintServiceImpl implements ComplaintService {
                 .build();
 
         complaintRepository.save(complaint);
+
+        // 관리자들에게 알림 생성
+        List<User> admins = userRepository.findAllByRole(UserRole.ADMIN);
+        for (User admin : admins) {
+            notificationService.createNotification(
+                    admin,
+                    "신규 민원 접수",
+                    String.format("%s번 사물함에 새로운 민원이 접수되었습니다.", request.getLockerNumber()),
+                    com.example.skhubox.domain.notification.NotificationType.COMPLAINT
+            );
+        }
+
         return ComplaintResponse.of(complaint);
     }
 
@@ -64,6 +78,15 @@ public class ComplaintServiceImpl implements ComplaintService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR));
 
         complaint.answerComplaint(request.getStatus(), request.getAnswer());
+
+        // 알림 생성
+        notificationService.createNotification(
+                complaint.getUser(),
+                "민원 답변 등록",
+                String.format("%s번 사물함 민원에 대한 답변이 등록되었습니다.", complaint.getLockerNumber()),
+                com.example.skhubox.domain.notification.NotificationType.COMPLAINT
+        );
+
         return ComplaintResponse.of(complaint);
     }
 }

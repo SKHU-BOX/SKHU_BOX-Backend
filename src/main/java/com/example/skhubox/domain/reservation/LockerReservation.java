@@ -35,6 +35,9 @@ public class LockerReservation extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime reservedAt;
 
+    @Column(nullable = false)
+    private LocalDateTime expiredAt;
+
     private LocalDateTime endAt;
 
     public LockerReservation(User user, Locker locker) {
@@ -42,6 +45,17 @@ public class LockerReservation extends BaseEntity {
         this.locker = locker;
         this.status = ReservationStatus.ACTIVE;
         this.reservedAt = LocalDateTime.now();
+        this.expiredAt = calculateExpiryDate(this.reservedAt);
+    }
+
+    private LocalDateTime calculateExpiryDate(LocalDateTime start) {
+        if (start.getMonthValue() <= 6) {
+            // 1학기: 7월 1일 00:00
+            return LocalDateTime.of(start.getYear(), 7, 1, 0, 0);
+        } else {
+            // 2학기: 내년 1월 1일 00:00
+            return LocalDateTime.of(start.getYear() + 1, 1, 1, 0, 0);
+        }
     }
 
     public void returnReservation() {
@@ -51,5 +65,9 @@ public class LockerReservation extends BaseEntity {
 
     public void expire() {
         this.status = ReservationStatus.EXPIRED;
+    }
+
+    public void updateExpiryDate(LocalDateTime newExpiryDate) {
+        this.expiredAt = newExpiryDate;
     }
 }
