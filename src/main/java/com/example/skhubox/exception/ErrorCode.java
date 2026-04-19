@@ -27,8 +27,6 @@ public enum ErrorCode {
     RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "L008", "해당 예약 정보를 찾을 수 없습니다."),
     LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "L009", "예약 처리 중 충돌이 발생했습니다. 다시 시도해주세요."),
 
-    LOCK_ACQUISITION_FAILED(HttpStatus.TOO_MANY_REQUESTS, "L008", "이미 처리 중인 요청입니다. 잠시 후 다시 시도해주세요."),
-
     QUEUE_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "Q001", "대기열 모드 설정 정보를 찾을 수 없습니다.");
 
     private final HttpStatus status;
