@@ -27,14 +27,17 @@ public class DashboardService {
     private final LockerRepository lockerRepository;
     private final LockerReservationRepository lockerReservationRepository;
     private final ComplaintRepository complaintRepository;
+    private final ReservationExpirationService reservationExpirationService;
 
     public DashboardResponse getDashboardData(String studentNumber) {
+        reservationExpirationService.expireOverdueReservations();
+
         User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         // 1. 내 예약 정보 조회
         DashboardResponse.MyLockerInfo myLockerInfo = lockerReservationRepository
-                .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
+                .findByUser_IdAndStatusAndExpiredAtAfter(user.getId(), ReservationStatus.ACTIVE, LocalDateTime.now())
                 .map(this::mapToMyLockerInfo)
                 .orElse(null);
 
