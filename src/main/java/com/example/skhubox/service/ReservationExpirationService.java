@@ -2,6 +2,7 @@ package com.example.skhubox.service;
 
 import com.example.skhubox.domain.reservation.LockerReservation;
 import com.example.skhubox.domain.reservation.ReservationStatus;
+import com.example.skhubox.domain.operation.OperationLogType;
 import com.example.skhubox.repository.LockerReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import java.util.List;
 public class ReservationExpirationService {
 
     private final LockerReservationRepository lockerReservationRepository;
+    private final OperationLogService operationLogService;
 
     @Scheduled(fixedDelay = 60000)
     @Transactional
@@ -28,6 +30,11 @@ public class ReservationExpirationService {
         for (LockerReservation reservation : overdueReservations) {
             reservation.expire();
             reservation.getLocker().release();
+            operationLogService.log(
+                    OperationLogType.RESERVATION_EXPIRED,
+                    "예약 만료 처리",
+                    String.format("%s번 사물함 예약이 자동 만료 처리되었습니다.", reservation.getLocker().getLockerNumber())
+            );
         }
 
         if (!overdueReservations.isEmpty()) {

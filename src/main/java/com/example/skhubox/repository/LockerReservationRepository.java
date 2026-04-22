@@ -28,5 +28,11 @@ public interface LockerReservationRepository extends JpaRepository<LockerReserva
 
     List<LockerReservation> findAllByStatusAndExpiredAtBefore(ReservationStatus status, LocalDateTime expiredAt);
 
+    List<LockerReservation> findTop4ByStatusInOrderByCreatedAtDesc(List<ReservationStatus> statuses);
+
+    long countByStatusIn(List<ReservationStatus> statuses);
+
+    long countByStatusInAndExpiredAtBetween(List<ReservationStatus> statuses, LocalDateTime start, LocalDateTime end);
+
     long countByLocker_IdAndStatus(Long lockerId, ReservationStatus status);
 }

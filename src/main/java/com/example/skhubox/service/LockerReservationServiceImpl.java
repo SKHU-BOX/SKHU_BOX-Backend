@@ -1,6 +1,7 @@
 package com.example.skhubox.service;
 
 import com.example.skhubox.domain.locker.Locker;
+import com.example.skhubox.domain.operation.OperationLogType;
 import com.example.skhubox.domain.reservation.LockerReservation;
 import com.example.skhubox.domain.reservation.ReservationStatus;
 import com.example.skhubox.domain.user.User;
@@ -37,6 +38,7 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     private final WaitingQueueService waitingQueueService;
     private final NotificationService notificationService;
     private final ReservationExpirationService reservationExpirationService;
+    private final OperationLogService operationLogService;
     private final RedisTemplate<String, String> redisTemplate;
 
     private static final String LOCK_PREFIX = "lock:locker:";
@@ -98,6 +100,11 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                                 locker.getBuilding(), locker.getLockerNumber(), savedReservation.getExpiredAt().toLocalDate()),
                         com.example.skhubox.domain.notification.NotificationType.RESERVATION
                 );
+                operationLogService.log(
+                        OperationLogType.RESERVATION_ASSIGNED,
+                        "사물함 예약 완료",
+                        String.format("%s 사용자가 %s번 사물함을 예약했습니다.", studentNumber, locker.getLockerNumber())
+                );
 
                 log.info("[Reservation-Success] User {} successfully reserved locker {}.", studentNumber, lockerId);
                 return toResponse(savedReservation, "사물함 예약이 완료되었습니다.");
@@ -125,6 +132,11 @@ public class LockerReservationServiceImpl implements LockerReservationService {
 
         reservation.returnReservation();
         locker.release();
+        operationLogService.log(
+                OperationLogType.RESERVATION_RETURNED,
+                "사물함 반납 완료",
+                String.format("%s 사용자가 %s번 사물함을 반납했습니다.", studentNumber, locker.getLockerNumber())
+        );
 
         log.info("[Return-Success] User {} returned locker {}.", studentNumber, lockerId);
         return toResponse(reservation, "사물함 반납이 완료되었습니다.");
@@ -165,6 +177,12 @@ public class LockerReservationServiceImpl implements LockerReservationService {
             // 만료일은 이전 예약의 것을 그대로 따르거나 새로 계산 (여기서는 새로 계산된 것이 들어가도록 엔티티 생성자 활용)
             LockerReservation savedReservation = lockerReservationRepository.saveAndFlush(newReservation);
             newLocker.occupy(savedReservation.getExpiredAt());
+            operationLogService.log(
+                    OperationLogType.RESERVATION_CHANGED,
+                    "사물함 변경 완료",
+                    String.format("%s 사용자가 %s번에서 %s번 사물함으로 변경했습니다.",
+                            studentNumber, oldLocker.getLockerNumber(), newLocker.getLockerNumber())
+            );
             
             log.info("[Change-Success] User {} changed locker from {} to {}. New Expiry: {}", 
                     studentNumber, currentLockerId, newLockerId, savedReservation.getExpiredAt());
