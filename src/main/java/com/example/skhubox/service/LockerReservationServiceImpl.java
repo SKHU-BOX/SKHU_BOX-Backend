@@ -36,12 +36,15 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     private final QueueModeSettingService queueModeSettingService;
     private final WaitingQueueService waitingQueueService;
     private final NotificationService notificationService;
+    private final ReservationExpirationService reservationExpirationService;
     private final RedisTemplate<String, String> redisTemplate;
 
     private static final String LOCK_PREFIX = "lock:locker:";
 
     @Override
     public LockerReservationResponse reserveLocker(String studentNumber, Long lockerId) {
+        reservationExpirationService.expireOverdueReservations();
+
         String lockKey = LOCK_PREFIX + lockerId;
         Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", 5, TimeUnit.SECONDS);
         
@@ -109,10 +112,12 @@ public class LockerReservationServiceImpl implements LockerReservationService {
 
     @Override
     public LockerReservationResponse returnLocker(String studentNumber) {
+        reservationExpirationService.expireOverdueReservations();
+
         User user = getUser(studentNumber);
 
         LockerReservation reservation = lockerReservationRepository
-                .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
+                .findByUser_IdAndStatusAndExpiredAtAfter(user.getId(), ReservationStatus.ACTIVE, LocalDateTime.now())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
 
         Long lockerId = reservation.getLocker().getId();
@@ -127,10 +132,12 @@ public class LockerReservationServiceImpl implements LockerReservationService {
 
     @Override
     public LockerReservationResponse changeLocker(String studentNumber, Long newLockerId) {
+        reservationExpirationService.expireOverdueReservations();
+
         User user = getUser(studentNumber);
 
         LockerReservation currentReservation = lockerReservationRepository
-                .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
+                .findByUser_IdAndStatusAndExpiredAtAfter(user.getId(), ReservationStatus.ACTIVE, LocalDateTime.now())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
 
         Long currentLockerId = currentReservation.getLocker().getId();
@@ -179,10 +186,12 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     @Override
     @Transactional(readOnly = true)
     public LockerReservationResponse getMyReservation(String studentNumber) {
+        reservationExpirationService.expireOverdueReservations();
+
         User user = getUser(studentNumber);
 
         LockerReservation reservation = lockerReservationRepository
-                .findByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)
+                .findByUser_IdAndStatusAndExpiredAtAfter(user.getId(), ReservationStatus.ACTIVE, LocalDateTime.now())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
 
         return toResponse(reservation, "현재 예약 정보 조회 성공");
@@ -229,11 +238,13 @@ public class LockerReservationServiceImpl implements LockerReservationService {
             throw new BusinessException(ErrorCode.LOCKER_NOT_NORMAL);
         }
 
-        if (lockerReservationRepository.existsByUser_IdAndStatus(user.getId(), ReservationStatus.ACTIVE)) {
+        if (lockerReservationRepository.existsByUser_IdAndStatusAndExpiredAtAfter(
+                user.getId(), ReservationStatus.ACTIVE, LocalDateTime.now())) {
             throw new BusinessException(ErrorCode.USER_ALREADY_HAS_LOCKER);
         }
 
-        if (lockerReservationRepository.existsByLocker_IdAndStatus(locker.getId(), ReservationStatus.ACTIVE)) {
+        if (lockerReservationRepository.existsByLocker_IdAndStatusAndExpiredAtAfter(
+                locker.getId(), ReservationStatus.ACTIVE, LocalDateTime.now())) {
             throw new BusinessException(ErrorCode.ALREADY_RESERVED_LOCKER);
         }
     }
@@ -243,7 +254,8 @@ public class LockerReservationServiceImpl implements LockerReservationService {
             throw new BusinessException(ErrorCode.LOCKER_NOT_NORMAL);
         }
 
-        if (lockerReservationRepository.existsByLocker_IdAndStatus(newLocker.getId(), ReservationStatus.ACTIVE)) {
+        if (lockerReservationRepository.existsByLocker_IdAndStatusAndExpiredAtAfter(
+                newLocker.getId(), ReservationStatus.ACTIVE, LocalDateTime.now())) {
             throw new BusinessException(ErrorCode.ALREADY_RESERVED_LOCKER);
         }
     }
