@@ -34,6 +34,8 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserRole role;
 
+    private String fcmToken;
+
     public User(String studentNumber, String name, String email, String department, String password) {
         this.studentNumber = studentNumber;
         this.name = name;
@@ -53,5 +55,9 @@ public class User {
 
     public void assignUserRole() {
         this.role = UserRole.USER;
+    }
+
+    public void updateFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
     }
 }

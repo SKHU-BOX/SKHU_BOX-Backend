@@ -48,4 +48,11 @@ public class UserService {
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
     }
+
+    @Transactional
+    public void updateFcmToken(String studentNumber, String token) {
+        User user = userRepository.findByStudentNumber(studentNumber)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.updateFcmToken(token);
+    }
 }

@@ -16,6 +16,9 @@ public enum ErrorCode {
     INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "U004", "비밀번호가 일치하지 않습니다."),
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "U005", "로그인 인증에 실패했습니다."),
     ADMIN_ONLY(HttpStatus.FORBIDDEN, "U006", "관리자만 접근할 수 있습니다."),
+    EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "U007", "이메일 인증이 완료되지 않았습니다."),
+    INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "U008", "유효하지 않은 인증 코드입니다."),
+    EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "U009", "이메일 발송에 실패했습니다."),
 
     LOCKER_NOT_FOUND(HttpStatus.NOT_FOUND, "L001", "사물함 정보가 존재하지 않습니다."),
     LOCKER_NOT_NORMAL(HttpStatus.BAD_REQUEST, "L002", "해당 사물함은 현재 사용 불가 상태입니다."),
@@ -26,8 +29,6 @@ public enum ErrorCode {
     QUEUE_MODE_RESERVATION_BLOCKED(HttpStatus.BAD_REQUEST, "L007", "현재 대기열 모드가 활성화되어 있어 바로 예약할 수 없습니다. 대기열을 통해 진행해주세요."),
     RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "L008", "해당 예약 정보를 찾을 수 없습니다."),
     LOCK_ACQUISITION_FAILED(HttpStatus.CONFLICT, "L009", "예약 처리 중 충돌이 발생했습니다. 다시 시도해주세요."),
-
-    LOCK_ACQUISITION_FAILED(HttpStatus.TOO_MANY_REQUESTS, "L008", "이미 처리 중인 요청입니다. 잠시 후 다시 시도해주세요."),
 
     QUEUE_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "Q001", "대기열 모드 설정 정보를 찾을 수 없습니다.");
 
