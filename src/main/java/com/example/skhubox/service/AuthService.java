@@ -51,6 +51,7 @@ public class AuthService {
     private static final long VERIFY_CODE_EXPIRATION = 5; // 5분
     private static final long VERIFIED_FLAG_EXPIRATION = 30; // 30분
     private static final long PASSWORD_RESET_EXPIRATION = 15; // 15분
+    private static final String PASSWORD_RESET_URL_ENV = "PASSWORD_RESET_URL";
 
     public void signup(SignupRequest request) {
         // 이메일 인증 여부 확인
@@ -181,10 +182,21 @@ public class AuthService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(to);
             message.setSubject("[SKHUBOX] 비밀번호 재설정 안내");
+            String passwordResetUrl = System.getenv(PASSWORD_RESET_URL_ENV);
+            String resetLink = passwordResetUrl == null || passwordResetUrl.isBlank()
+                    ? null
+                    : passwordResetUrl + (passwordResetUrl.contains("?") ? "&" : "?") + "token=" + token;
             message.setText("""
+                    비밀번호 재설정을 요청하셨다면 아래 정보를 사용해주세요.
+
+                    %s
+
                     비밀번호 재설정 토큰: [%s]
                     15분 이내에 새 비밀번호와 함께 입력해주세요.
-                    """.formatted(token));
+                    """.formatted(
+                    resetLink == null ? "재설정 링크가 설정되지 않아 토큰을 직접 입력해야 합니다." : "재설정 링크: " + resetLink,
+                    token
+            ));
             mailSender.send(message);
         } catch (Exception e) {
             log.error("Failed to send password reset email to {}", to, e);
