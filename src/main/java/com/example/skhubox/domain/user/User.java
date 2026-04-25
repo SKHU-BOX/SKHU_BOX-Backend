@@ -68,4 +68,8 @@ public class User extends BaseEntity {
     public void updateNotificationEnabled(boolean notificationEnabled) {
         this.notificationEnabled = notificationEnabled;
     }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
 }

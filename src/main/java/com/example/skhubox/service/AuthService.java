@@ -3,6 +3,8 @@ package com.example.skhubox.service;
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.dto.auth.LoginRequest;
 import com.example.skhubox.dto.auth.LoginResponse;
+import com.example.skhubox.dto.auth.PasswordResetConfirmRequest;
+import com.example.skhubox.dto.auth.PasswordResetRequest;
 import com.example.skhubox.dto.auth.SignupRequest;
 import com.example.skhubox.dto.auth.EmailRequest;
 import com.example.skhubox.dto.auth.EmailVerifyRequest;
@@ -27,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -44,8 +47,10 @@ public class AuthService {
 
     private static final String EMAIL_VERIFY_KEY_PREFIX = "email:verify:";
     private static final String EMAIL_VERIFIED_KEY_PREFIX = "email:verified:";
+    private static final String PASSWORD_RESET_KEY_PREFIX = "password:reset:";
     private static final long VERIFY_CODE_EXPIRATION = 5; // 5분
     private static final long VERIFIED_FLAG_EXPIRATION = 30; // 30분
+    private static final long PASSWORD_RESET_EXPIRATION = 15; // 15분
 
     public void signup(SignupRequest request) {
         // 이메일 인증 여부 확인
@@ -127,6 +132,32 @@ public class AuthService {
         redisTemplate.delete(EMAIL_VERIFY_KEY_PREFIX + email);
     }
 
+    public void requestPasswordReset(PasswordResetRequest request) {
+        userRepository.findByStudentNumberAndEmail(request.getStudentNumber(), request.getEmail())
+                .ifPresent(user -> {
+                    String token = UUID.randomUUID().toString();
+                    redisTemplate.opsForValue().set(
+                            PASSWORD_RESET_KEY_PREFIX + token,
+                            user.getStudentNumber(),
+                            PASSWORD_RESET_EXPIRATION,
+                            TimeUnit.MINUTES
+                    );
+                    sendPasswordResetEmail(user.getEmail(), token);
+                });
+    }
+
+    public void confirmPasswordReset(PasswordResetConfirmRequest request) {
+        String studentNumber = redisTemplate.opsForValue().get(PASSWORD_RESET_KEY_PREFIX + request.getToken());
+        if (studentNumber == null) {
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD_RESET_TOKEN);
+        }
+
+        User user = userRepository.findByStudentNumber(studentNumber)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
+        redisTemplate.delete(PASSWORD_RESET_KEY_PREFIX + request.getToken());
+    }
+
     private String generateCode() {
         Random random = new Random();
         return String.format("%06d", random.nextInt(1000000));
@@ -141,6 +172,22 @@ public class AuthService {
             mailSender.send(message);
         } catch (Exception e) {
             log.error("Failed to send email to {}", to, e);
+            throw new BusinessException(ErrorCode.EMAIL_SEND_FAILED);
+        }
+    }
+
+    private void sendPasswordResetEmail(String to, String token) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject("[SKHUBOX] 비밀번호 재설정 안내");
+            message.setText("""
+                    비밀번호 재설정 토큰: [%s]
+                    15분 이내에 새 비밀번호와 함께 입력해주세요.
+                    """.formatted(token));
+            mailSender.send(message);
+        } catch (Exception e) {
+            log.error("Failed to send password reset email to {}", to, e);
             throw new BusinessException(ErrorCode.EMAIL_SEND_FAILED);
         }
     }

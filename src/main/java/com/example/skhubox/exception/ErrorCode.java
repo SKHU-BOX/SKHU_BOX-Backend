@@ -19,6 +19,7 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "U007", "이메일 인증이 완료되지 않았습니다."),
     INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "U008", "유효하지 않은 인증 코드입니다."),
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "U009", "이메일 발송에 실패했습니다."),
+    INVALID_PASSWORD_RESET_TOKEN(HttpStatus.BAD_REQUEST, "U010", "유효하지 않거나 만료된 비밀번호 재설정 토큰입니다."),
 
     LOCKER_NOT_FOUND(HttpStatus.NOT_FOUND, "L001", "사물함 정보가 존재하지 않습니다."),
     LOCKER_NOT_NORMAL(HttpStatus.BAD_REQUEST, "L002", "해당 사물함은 현재 사용 불가 상태입니다."),

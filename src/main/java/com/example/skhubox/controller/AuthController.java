@@ -5,6 +5,8 @@ import com.example.skhubox.dto.auth.EmailRequest;
 import com.example.skhubox.dto.auth.EmailVerifyRequest;
 import com.example.skhubox.dto.auth.LoginRequest;
 import com.example.skhubox.dto.auth.LoginResponse;
+import com.example.skhubox.dto.auth.PasswordResetConfirmRequest;
+import com.example.skhubox.dto.auth.PasswordResetRequest;
 import com.example.skhubox.dto.auth.SignupRequest;
 import com.example.skhubox.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,5 +50,19 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.ok("로그인 성공", response));
+    }
+
+    @Operation(summary = "비밀번호 재설정 요청", description = "학번과 이메일이 일치하면 비밀번호 재설정 토큰을 이메일로 발송합니다.")
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<ApiResponse<Void>> requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
+        authService.requestPasswordReset(request);
+        return ResponseEntity.ok(ApiResponse.ok("입력한 정보가 유효하면 재설정 메일을 발송했습니다.", null));
+    }
+
+    @Operation(summary = "비밀번호 재설정 완료", description = "이메일로 받은 토큰과 새 비밀번호를 입력해 비밀번호를 재설정합니다.")
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
+        authService.confirmPasswordReset(request);
+        return ResponseEntity.ok(ApiResponse.ok("비밀번호가 성공적으로 변경되었습니다.", null));
     }
 }
