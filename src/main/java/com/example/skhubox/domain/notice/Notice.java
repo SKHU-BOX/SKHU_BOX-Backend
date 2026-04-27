@@ -25,9 +25,22 @@ public class Notice extends BaseEntity {
     @Column(nullable = false)
     private boolean pinned;
 
+    @Column(nullable = false)
+    private boolean deleted = false;
+
     public Notice(String title, String content, boolean pinned) {
         this.title = title;
         this.content = content;
         this.pinned = pinned;
+    }
+
+    public void update(String title, String content, boolean pinned) {
+        this.title = title;
+        this.content = content;
+        this.pinned = pinned;
+    }
+
+    public void delete() {
+        this.deleted = true;
     }
 }

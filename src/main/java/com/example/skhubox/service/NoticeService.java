@@ -4,6 +4,9 @@ import com.example.skhubox.domain.notice.Notice;
 import com.example.skhubox.domain.operation.OperationLogType;
 import com.example.skhubox.dto.notice.NoticeCreateRequest;
 import com.example.skhubox.dto.notice.NoticeResponse;
+import com.example.skhubox.dto.notice.NoticeUpdateRequest;
+import com.example.skhubox.exception.BusinessException;
+import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +23,7 @@ public class NoticeService {
     private final OperationLogService operationLogService;
 
     public List<NoticeResponse> getLatestNotices() {
-        return noticeRepository.findTop5ByOrderByPinnedDescCreatedAtDesc()
+        return noticeRepository.findTop5ByDeletedFalseOrderByPinnedDescCreatedAtDesc()
                 .stream()
                 .map(NoticeResponse::from)
                 .toList();
@@ -35,5 +38,28 @@ public class NoticeService {
         ));
         operationLogService.log(OperationLogType.NOTICE_POSTED, "공지사항 등록", request.getTitle());
         return NoticeResponse.from(notice);
+    }
+
+    @Transactional
+    public NoticeResponse updateNotice(Long id, NoticeUpdateRequest request) {
+        Notice notice = noticeRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
+        
+        notice.update(request.getTitle(), request.getContent(), request.isPinned());
+        noticeRepository.flush(); // 로그 찍기 전 DB 반영 보장
+        
+        operationLogService.log(OperationLogType.NOTICE_UPDATED, "공지사항 수정", request.getTitle());
+        return NoticeResponse.from(notice);
+    }
+
+    @Transactional
+    public void deleteNotice(Long id) {
+        Notice notice = noticeRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
+        
+        notice.delete();
+        noticeRepository.flush(); // 로그 찍기 전 DB 반영 보장
+        
+        operationLogService.log(OperationLogType.NOTICE_DELETED, "공지사항 삭제", notice.getTitle());
     }
 }
