@@ -75,7 +75,7 @@ public class DashboardService {
                         .build())
                 .toList();
 
-        List<NoticeResponse> notices = noticeRepository.findTop5ByOrderByPinnedDescCreatedAtDesc()
+        List<NoticeResponse> notices = noticeRepository.findTop5ByDeletedFalseOrderByPinnedDescCreatedAtDesc()
                 .stream()
                 .map(NoticeResponse::from)
                 .toList();
