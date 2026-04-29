@@ -30,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -119,26 +118,26 @@ public class AuthService {
     public void requestPasswordReset(PasswordResetRequest request) {
         userRepository.findByStudentNumberAndEmail(request.getStudentNumber(), request.getEmail())
                 .ifPresent(user -> {
-                    String token = UUID.randomUUID().toString();
+                    String code = generateCode();
                     redisTemplate.opsForValue().set(
-                            PASSWORD_RESET_KEY_PREFIX + token,
-                            user.getStudentNumber(),
+                            PASSWORD_RESET_KEY_PREFIX + user.getStudentNumber(),
+                            code,
                             PASSWORD_RESET_EXPIRATION,
                             TimeUnit.MINUTES
                     );
-                    sendPasswordResetEmail(user.getEmail(), token);
+                    sendPasswordResetEmail(user.getEmail(), code);
                 });
     }
 
     public void confirmPasswordReset(PasswordResetConfirmRequest request) {
-        String studentNumber = redisTemplate.opsForValue().get(PASSWORD_RESET_KEY_PREFIX + request.getToken());
-        if (studentNumber == null) {
+        String stored = redisTemplate.opsForValue().get(PASSWORD_RESET_KEY_PREFIX + request.getStudentNumber());
+        if (stored == null || !stored.equals(request.getCode())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD_RESET_TOKEN);
         }
-        User user = userRepository.findByStudentNumber(studentNumber)
+        User user = userRepository.findByStudentNumber(request.getStudentNumber())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
-        redisTemplate.delete(PASSWORD_RESET_KEY_PREFIX + request.getToken());
+        redisTemplate.delete(PASSWORD_RESET_KEY_PREFIX + request.getStudentNumber());
     }
 
     private String generateCode() {
@@ -169,14 +168,14 @@ public class AuthService {
                     ? null
                     : passwordResetUrl + (passwordResetUrl.contains("?") ? "&" : "?") + "token=" + token;
             message.setText("""
-                    비밀번호 재설정을 요청하셨다면 아래 정보를 사용해주세요.
+                    비밀번호 재설정을 요청하셨다면 아래 인증 코드를 입력해주세요.
 
                     %s
 
-                    비밀번호 재설정 토큰: [%s]
-                    15분 이내에 새 비밀번호와 함께 입력해주세요.
+                    비밀번호 재설정 인증 코드: [%s]
+                    15분 이내에 학번과 함께 입력해주세요.
                     """.formatted(
-                    resetLink == null ? "재설정 링크가 설정되지 않아 토큰을 직접 입력해야 합니다." : "재설정 링크: " + resetLink,
+                    resetLink == null ? "재설정 링크가 설정되지 않아 인증 코드를 직접 입력해야 합니다." : "재설정 링크: " + resetLink,
                     token
             ));
             mailSender.send(message);
