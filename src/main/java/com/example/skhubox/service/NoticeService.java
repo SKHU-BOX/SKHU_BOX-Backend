@@ -46,6 +46,8 @@ public class NoticeService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
         
         notice.update(request.getTitle(), request.getContent(), request.isPinned());
+        noticeRepository.flush(); // 로그 찍기 전 DB 반영 보장
+        
         operationLogService.log(OperationLogType.NOTICE_UPDATED, "공지사항 수정", request.getTitle());
         return NoticeResponse.from(notice);
     }
@@ -56,6 +58,8 @@ public class NoticeService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOTICE_NOT_FOUND));
         
         notice.delete();
+        noticeRepository.flush(); // 로그 찍기 전 DB 반영 보장
+        
         operationLogService.log(OperationLogType.NOTICE_DELETED, "공지사항 삭제", notice.getTitle());
     }
 }
