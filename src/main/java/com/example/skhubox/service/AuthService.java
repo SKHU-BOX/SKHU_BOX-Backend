@@ -8,7 +8,6 @@ import com.example.skhubox.dto.auth.LoginResponse;
 import com.example.skhubox.dto.auth.PasswordResetConfirmRequest;
 import com.example.skhubox.dto.auth.PasswordResetRequest;
 import com.example.skhubox.dto.auth.SignupRequest;
-import com.example.skhubox.dto.auth.TokenRefreshResponse;
 import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.UserRepository;
@@ -25,7 +24,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,11 +54,9 @@ public class AuthService {
     private static final long VERIFY_CODE_EXPIRATION = 5;
     private static final long VERIFIED_FLAG_EXPIRATION = 30;
     private static final long PASSWORD_RESET_EXPIRATION = 15;
-    private static final long REFRESH_TOKEN_EXPIRATION_DAYS = 7;
     private static final String PASSWORD_RESET_URL_ENV = "PASSWORD_RESET_URL";
 
     public void signup(SignupRequest request) {
-        // 이메일 인증 여부 확인
         String isVerified = redisTemplate.opsForValue().get(EMAIL_VERIFIED_KEY_PREFIX + request.getEmail());
         if (isVerified == null) {
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
@@ -82,60 +78,45 @@ public class AuthService {
                 passwordEncoder.encode(request.getPassword())
         );
 
-        // 테스트용 관리자 계정 생성 로직 (학번이 999999999인 경우)
         if ("999999999".equals(request.getStudentNumber())) {
             user.assignAdminRole();
         }
 
         userRepository.save(user);
-        
-        // 가입 완료 후 인증 플래그 삭제
         redisTemplate.delete(EMAIL_VERIFIED_KEY_PREFIX + request.getEmail());
     }
 
     public void sendVerificationCode(EmailRequest request) {
         String email = request.getEmail();
-
-        // 학교 이메일 도메인 체크
         if (!email.endsWith("@office.skhu.ac.kr")) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
-
-        // 이미 가입된 이메일인지 체크
         if (userService.existsByEmail(email)) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
         String code = generateCode();
-
-        // Redis에 코드 저장 (5분간 유효)
         redisTemplate.opsForValue().set(
                 EMAIL_VERIFY_KEY_PREFIX + email,
                 code,
                 VERIFY_CODE_EXPIRATION,
                 TimeUnit.MINUTES
         );
-
         sendEmail(email, code);
     }
 
     public void verifyCode(EmailVerifyRequest request) {
         String email = request.getEmail();
         String savedCode = redisTemplate.opsForValue().get(EMAIL_VERIFY_KEY_PREFIX + email);
-
         if (savedCode == null || !savedCode.equals(request.getCode())) {
             throw new BusinessException(ErrorCode.INVALID_VERIFICATION_CODE);
         }
-
-        // 인증 성공 시 Redis에 인증 완료 플래그 저장 (30분간 유효)
         redisTemplate.opsForValue().set(
                 EMAIL_VERIFIED_KEY_PREFIX + email,
                 "true",
                 VERIFIED_FLAG_EXPIRATION,
                 TimeUnit.MINUTES
         );
-
-        // 사용한 인증 코드는 삭제
         redisTemplate.delete(EMAIL_VERIFY_KEY_PREFIX + email);
     }
 
@@ -158,7 +139,6 @@ public class AuthService {
         if (studentNumber == null) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD_RESET_TOKEN);
         }
-
         User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
@@ -210,6 +190,7 @@ public class AuthService {
         }
     }
 
+    @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         userService.findByStudentNumber(request.getStudentNumber());
 
@@ -221,7 +202,7 @@ public class AuthService {
                     )
             );
 
-            String accessToken = jwtTokenProvider.createToken(authentication);
+            String accessToken = jwtTokenProvider.createAccessToken(authentication);
             String refreshToken = jwtTokenProvider.createRefreshToken(authentication);
 
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
@@ -230,8 +211,8 @@ public class AuthService {
             redisTemplate.opsForValue().set(
                     REFRESH_TOKEN_KEY_PREFIX + studentNumber,
                     refreshToken,
-                    REFRESH_TOKEN_EXPIRATION_DAYS,
-                    TimeUnit.DAYS
+                    jwtTokenProvider.getRefreshExpiration(),
+                    TimeUnit.MILLISECONDS
             );
 
             return new LoginResponse(
@@ -247,7 +228,8 @@ public class AuthService {
         }
     }
 
-    public TokenRefreshResponse refresh(String refreshToken) {
+    @Transactional(readOnly = true)
+    public LoginResponse refresh(String refreshToken) {
         if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
@@ -263,9 +245,23 @@ public class AuthService {
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 userDetails, null, userDetails.getAuthorities()
         );
-        String newAccessToken = jwtTokenProvider.createToken(authentication);
+        
+        String newAccessToken = jwtTokenProvider.createAccessToken(authentication);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(authentication);
 
-        return new TokenRefreshResponse(newAccessToken, "Bearer");
+        redisTemplate.opsForValue().set(
+                REFRESH_TOKEN_KEY_PREFIX + studentNumber,
+                newRefreshToken,
+                jwtTokenProvider.getRefreshExpiration(),
+                TimeUnit.MILLISECONDS
+        );
+
+        return new LoginResponse(
+                newAccessToken,
+                newRefreshToken,
+                "Bearer",
+                userDetails.getUser().getRole().name()
+        );
     }
 
     public void logout(String studentNumber) {

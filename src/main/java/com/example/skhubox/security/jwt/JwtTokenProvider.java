@@ -33,7 +33,7 @@ public class JwtTokenProvider {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String createToken(Authentication authentication) {
+    public String createAccessToken(Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
         Date now = new Date();
@@ -68,10 +68,6 @@ public class JwtTokenProvider {
         return getClaims(token).getSubject();
     }
 
-    public String getRole(String token) {
-        return getClaims(token).get("role", String.class);
-    }
-
     public boolean validateToken(String token) {
         try {
             getClaims(token);
@@ -87,5 +83,9 @@ public class JwtTokenProvider {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public long getRefreshExpiration() {
+        return refreshExpiration;
     }
 }
