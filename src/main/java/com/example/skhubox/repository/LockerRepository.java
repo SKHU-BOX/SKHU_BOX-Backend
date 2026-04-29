@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
+
 import java.util.Optional;
 
 public interface LockerRepository extends JpaRepository<Locker, Long> {
@@ -18,4 +20,7 @@ public interface LockerRepository extends JpaRepository<Locker, Long> {
     Optional<Locker> findByIdWithPessimisticLock(Long lockerId);
 
     long countByStatus(LockerStatus status);
+
+    @Query("SELECT l.building, COUNT(l), SUM(CASE WHEN l.status = 'ACTIVE' THEN 1 ELSE 0 END) FROM Locker l GROUP BY l.building ORDER BY l.building ASC")
+    List<Object[]> countGroupByBuilding();
 }

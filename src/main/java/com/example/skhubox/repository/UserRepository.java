@@ -11,6 +11,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByStudentNumber(String studentNumber);
 
+    Optional<User> findByStudentNumberAndEmail(String studentNumber, String email);
+
     Optional<User> findByEmail(String email);
 
     boolean existsByStudentNumber(String studentNumber);
@@ -18,4 +20,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     List<User> findAllByRole(UserRole role);
+
+    long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
 }
