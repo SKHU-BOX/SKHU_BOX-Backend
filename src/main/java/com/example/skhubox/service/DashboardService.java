@@ -11,11 +11,13 @@ import com.example.skhubox.domain.user.User;
 import com.example.skhubox.dto.NotificationSettingResponse;
 import com.example.skhubox.dto.dashboard.AdminDashboardResponse;
 import com.example.skhubox.dto.dashboard.UserDashboardResponse;
+import com.example.skhubox.dto.notice.NoticeResponse;
 import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.ComplaintRepository;
 import com.example.skhubox.repository.LockerRepository;
 import com.example.skhubox.repository.LockerReservationRepository;
+import com.example.skhubox.repository.NoticeRepository;
 import com.example.skhubox.repository.OperationLogRepository;
 import com.example.skhubox.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class DashboardService {
     private final LockerRepository lockerRepository;
     private final LockerReservationRepository lockerReservationRepository;
     private final ComplaintRepository complaintRepository;
+    private final NoticeRepository noticeRepository;
     private final OperationLogRepository operationLogRepository;
 
     public UserDashboardResponse getUserDashboard(String studentNumber) {
@@ -66,12 +69,18 @@ public class DashboardService {
                         .build())
                 .toList();
 
+        List<NoticeResponse> notices = noticeRepository.findTop5ByDeletedFalseOrderByPinnedDescCreatedAtDesc()
+                .stream()
+                .map(NoticeResponse::from)
+                .toList();
+
         return UserDashboardResponse.builder()
                 .today(LocalDate.now().format(DATE_FORMATTER))
                 .notificationSetting(new NotificationSettingResponse(user.isNotificationEnabled()))
                 .myLocker(myLocker)
                 .totalUsers(userRepository.count())
                 .totalAvailableLockers(lockerRepository.countByStatus(LockerStatus.NORMAL))
+                .notices(notices)
                 .myComplaints(myComplaints)
                 .build();
     }

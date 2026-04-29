@@ -17,16 +17,15 @@ public class GlobalExceptionHandler {
         String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.fail(errorMessage));
+                .body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE.getCode(), errorMessage));
     }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException e) {
         ErrorCode errorCode = e.getErrorCode();
-        String message = (e.getMessage() != null && !e.getMessage().isEmpty()) 
+        String message = (e.getMessage() != null && !e.getMessage().isEmpty())
                 ? e.getMessage() : errorCode.getMessage();
-        
-        // HTTP 상태 코드에 따라 로그 레벨 조정
+
         if (errorCode.getStatus().is5xxServerError()) {
             log.error("[BusinessException] {}: {}", errorCode.getCode(), message);
         } else {
@@ -35,7 +34,7 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(errorCode.getStatus())
-                .body(ApiResponse.fail(message));
+                .body(ApiResponse.fail(errorCode.getCode(), message));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -43,7 +42,7 @@ public class GlobalExceptionHandler {
         log.error("IllegalArgumentException: ", e);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.fail(e.getMessage()));
+                .body(ApiResponse.fail(ErrorCode.INVALID_INPUT_VALUE.getCode(), e.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
@@ -51,6 +50,6 @@ public class GlobalExceptionHandler {
         log.error("Internal Server Error: ", e);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
+                .body(ApiResponse.fail(ErrorCode.INTERNAL_SERVER_ERROR.getCode(), ErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
     }
 }

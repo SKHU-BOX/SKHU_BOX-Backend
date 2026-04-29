@@ -1,6 +1,7 @@
 package com.example.skhubox.dto.dashboard;
 
 import com.example.skhubox.dto.NotificationSettingResponse;
+import com.example.skhubox.dto.notice.NoticeResponse;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -14,6 +15,7 @@ public class UserDashboardResponse {
     private MyLockerCard myLocker;
     private long totalUsers;
     private long totalAvailableLockers;
+    private List<NoticeResponse> notices;
     private List<MyComplaintCard> myComplaints;
 
     @Getter

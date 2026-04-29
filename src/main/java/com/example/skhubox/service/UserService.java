@@ -2,6 +2,7 @@ package com.example.skhubox.service;
 import com.example.skhubox.domain.user.AdminActionLog;
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.domain.user.UserRole;
+import com.example.skhubox.dto.NotificationSettingResponse;
 import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.AdminActionLogRepository;
@@ -47,5 +48,20 @@ public class UserService {
 
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
+    }
+
+    @Transactional
+    public void updateFcmToken(String studentNumber, String token) {
+        User user = userRepository.findByStudentNumber(studentNumber)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.updateFcmToken(token);
+    }
+
+    @Transactional
+    public NotificationSettingResponse updateNotificationSetting(String studentNumber, boolean enabled) {
+        User user = userRepository.findByStudentNumber(studentNumber)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.updateNotificationEnabled(enabled);
+        return new NotificationSettingResponse(user.isNotificationEnabled());
     }
 }

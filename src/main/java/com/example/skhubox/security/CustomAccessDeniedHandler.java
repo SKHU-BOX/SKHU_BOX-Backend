@@ -22,7 +22,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
         response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-        ApiResponse<Void> apiResponse = ApiResponse.fail("해당 권한이 없습니다.");
+        ApiResponse<Void> apiResponse = ApiResponse.fail("U006", "해당 권한이 없습니다.");
         response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
     }
 }
