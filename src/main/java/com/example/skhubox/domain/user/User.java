@@ -40,6 +40,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private boolean notificationEnabled = true;
 
+    @Column(nullable = false)
+    private boolean deleted = false;
+
     public User(String studentNumber, String name, String email, String department, String password) {
         this.studentNumber = studentNumber;
         this.name = name;
@@ -71,5 +74,10 @@ public class User extends BaseEntity {
 
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
+    }
+
+    public void withdraw() {
+        this.deleted = true;
+        this.fcmToken = null;
     }
 }

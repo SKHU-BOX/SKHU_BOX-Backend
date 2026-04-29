@@ -9,15 +9,27 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    Optional<User> findByStudentNumber(String studentNumber);
+    default Optional<User> findByStudentNumber(String studentNumber) {
+        return findByStudentNumberAndDeletedFalse(studentNumber);
+    }
 
-    Optional<User> findByStudentNumberAndEmail(String studentNumber, String email);
+    Optional<User> findByStudentNumberAndDeletedFalse(String studentNumber);
 
-    Optional<User> findByEmail(String email);
+    Optional<User> findByStudentNumberAndEmailAndDeletedFalse(String studentNumber, String email);
 
-    boolean existsByStudentNumber(String studentNumber);
+    Optional<User> findByEmailAndDeletedFalse(String email);
 
-    boolean existsByEmail(String email);
+    default boolean existsByStudentNumber(String studentNumber) {
+        return existsByStudentNumberAndDeletedFalse(studentNumber);
+    }
+
+    default boolean existsByEmail(String email) {
+        return existsByEmailAndDeletedFalse(email);
+    }
+
+    boolean existsByStudentNumberAndDeletedFalse(String studentNumber);
+
+    boolean existsByEmailAndDeletedFalse(String email);
 
     List<User> findAllByRole(UserRole role);
 

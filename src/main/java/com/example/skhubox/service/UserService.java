@@ -1,4 +1,6 @@
 package com.example.skhubox.service;
+
+import com.example.skhubox.domain.operation.OperationLogType;
 import com.example.skhubox.domain.user.AdminActionLog;
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.domain.user.UserRole;
@@ -8,6 +10,7 @@ import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.AdminActionLogRepository;
 import com.example.skhubox.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +21,14 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AdminActionLogRepository adminActionLogRepository;
+    private final LockerReservationService lockerReservationService;
+    private final OperationLogService operationLogService;
+    private final StringRedisTemplate redisTemplate;
+
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "refresh:token:";
 
     public User findByStudentNumber(String studentNumber) {
-        return userRepository.findByStudentNumber(studentNumber)
+        return userRepository.findByStudentNumberAndDeletedFalse(studentNumber)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
@@ -43,25 +51,47 @@ public class UserService {
     }
 
     public boolean existsByStudentNumber(String studentNumber) {
-        return userRepository.existsByStudentNumber(studentNumber);
+        return userRepository.existsByStudentNumberAndDeletedFalse(studentNumber);
     }
 
     public boolean existsByEmail(String email) {
-        return userRepository.existsByEmail(email);
+        return userRepository.existsByEmailAndDeletedFalse(email);
     }
 
     @Transactional
     public void updateFcmToken(String studentNumber, String token) {
-        User user = userRepository.findByStudentNumber(studentNumber)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = findByStudentNumber(studentNumber);
         user.updateFcmToken(token);
     }
 
     @Transactional
     public NotificationSettingResponse updateNotificationSetting(String studentNumber, boolean enabled) {
-        User user = userRepository.findByStudentNumber(studentNumber)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = findByStudentNumber(studentNumber);
         user.updateNotificationEnabled(enabled);
         return new NotificationSettingResponse(user.isNotificationEnabled());
+    }
+
+    @Transactional
+    public void withdrawUser(String studentNumber) {
+        User user = findByStudentNumber(studentNumber);
+
+        // 1. 사용 중인 사물함이 있다면 반납 처리
+        try {
+            lockerReservationService.returnLocker(studentNumber);
+        } catch (BusinessException e) {
+            // 사물함 예약이 없는 경우(NO_ACTIVE_RESERVATION)는 정상적인 흐름이므로 무시
+            if (e.getErrorCode() != ErrorCode.NO_ACTIVE_RESERVATION) {
+                throw e;
+            }
+        }
+
+        // 2. Redis에서 Refresh Token 삭제하여 즉시 로그아웃 처리
+        redisTemplate.delete(REFRESH_TOKEN_KEY_PREFIX + studentNumber);
+
+        // 3. 소프트 딜리트 처리
+        user.withdraw();
+
+        // 4. 로그 기록
+        operationLogService.log(OperationLogType.USER_WITHDRAWN, "회원 탈퇴", studentNumber);
     }
 }

@@ -116,7 +116,7 @@ public class AuthService {
     }
 
     public void requestPasswordReset(PasswordResetRequest request) {
-        userRepository.findByStudentNumberAndEmail(request.getStudentNumber(), request.getEmail())
+        userRepository.findByStudentNumberAndEmailAndDeletedFalse(request.getStudentNumber(), request.getEmail())
                 .ifPresent(user -> {
                     String code = generateCode();
                     redisTemplate.opsForValue().set(
@@ -134,7 +134,7 @@ public class AuthService {
         if (stored == null || !stored.equals(request.getCode())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD_RESET_TOKEN);
         }
-        User user = userRepository.findByStudentNumber(request.getStudentNumber())
+        User user = userRepository.findByStudentNumberAndDeletedFalse(request.getStudentNumber())
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
         redisTemplate.delete(PASSWORD_RESET_KEY_PREFIX + request.getStudentNumber());

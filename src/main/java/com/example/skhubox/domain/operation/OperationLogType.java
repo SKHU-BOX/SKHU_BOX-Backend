@@ -14,7 +14,8 @@ public enum OperationLogType {
     COMPLAINT_PROCESSED("민원 처리"),
     NOTICE_POSTED("공지 등록"),
     NOTICE_UPDATED("공지 수정"),
-    NOTICE_DELETED("공지 삭제");
+    NOTICE_DELETED("공지 삭제"),
+    USER_WITHDRAWN("회원 탈퇴");
 
     private final String description;
 }

@@ -11,11 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "User API", description = "사용자 정보 관련 API")
 @RestController
@@ -44,5 +40,13 @@ public class UserController {
                 "알림 설정이 변경되었습니다.",
                 userService.updateNotificationSetting(userDetails.getUsername(), request.isEnabled())
         ));
+    }
+
+    @Operation(summary = "회원 탈퇴", description = "회원 탈퇴를 진행합니다. 사용 중인 사물함은 자동으로 반납됩니다.")
+    @DeleteMapping("/withdraw")
+    public ResponseEntity<ApiResponse<Void>> withdraw(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        userService.withdrawUser(userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.ok("회원 탈퇴가 완료되었습니다.", null));
     }
 }
