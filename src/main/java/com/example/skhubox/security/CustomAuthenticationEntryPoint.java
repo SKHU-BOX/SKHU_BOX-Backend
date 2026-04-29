@@ -22,7 +22,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-        ApiResponse<Void> apiResponse = ApiResponse.fail("로그인이 필요한 서비스입니다.");
+        ApiResponse<Void> apiResponse = ApiResponse.fail("C001", "로그인이 필요한 서비스입니다.");
         response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
     }
 }
