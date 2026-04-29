@@ -78,10 +78,6 @@ public class AuthService {
                 passwordEncoder.encode(request.getPassword())
         );
 
-        if ("999999999".equals(request.getStudentNumber())) {
-            user.assignAdminRole();
-        }
-
         userRepository.save(user);
         redisTemplate.delete(EMAIL_VERIFIED_KEY_PREFIX + request.getEmail());
     }
@@ -190,7 +186,6 @@ public class AuthService {
         }
     }
 
-    @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         userService.findByStudentNumber(request.getStudentNumber());
 
@@ -228,9 +223,12 @@ public class AuthService {
         }
     }
 
-    @Transactional(readOnly = true)
     public LoginResponse refresh(String refreshToken) {
         if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        if (!"refresh".equals(jwtTokenProvider.getTokenType(refreshToken))) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 

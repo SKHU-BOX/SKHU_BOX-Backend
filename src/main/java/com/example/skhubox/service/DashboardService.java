@@ -1,6 +1,5 @@
 package com.example.skhubox.service;
 
-import com.example.skhubox.domain.complaint.Complaint;
 import com.example.skhubox.domain.complaint.ComplaintStatus;
 import com.example.skhubox.domain.locker.Locker;
 import com.example.skhubox.domain.locker.LockerStatus;
@@ -30,8 +29,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -47,11 +44,8 @@ public class DashboardService {
     private final ComplaintRepository complaintRepository;
     private final NoticeRepository noticeRepository;
     private final OperationLogRepository operationLogRepository;
-    private final ReservationExpirationService reservationExpirationService;
 
     public UserDashboardResponse getUserDashboard(String studentNumber) {
-        reservationExpirationService.expireOverdueReservations();
-
         User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -92,32 +86,29 @@ public class DashboardService {
     }
 
     public AdminDashboardResponse getAdminDashboard(String studentNumber) {
-        reservationExpirationService.expireOverdueReservations();
-
         User admin = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         LocalDate today = LocalDate.now();
         LocalDateTime startOfToday = today.atStartOfDay();
         LocalDateTime endOfToday = today.plusDays(1).atStartOfDay();
-        LocalDateTime endOfSoon = LocalDateTime.now().plusDays(7);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime endOfSoon = now.plusDays(7);
         LocalDateTime startOfWeek = today.minusDays(6).atStartOfDay();
 
-        List<Locker> lockers = lockerRepository.findAll();
-        List<LockerReservation> activeReservations = lockerReservationRepository.findAllByStatus(ReservationStatus.ACTIVE);
         List<ComplaintStatus> unresolvedStatuses = List.of(
                 ComplaintStatus.PENDING,
                 ComplaintStatus.UNDER_REVIEW,
                 ComplaintStatus.IN_PROGRESS
         );
 
-        long totalLockers = lockers.size();
-        long activeLockers = lockers.stream().filter(locker -> locker.getStatus() == LockerStatus.ACTIVE).count();
+        long totalLockers = lockerRepository.count();
+        long activeLockers = lockerRepository.countByStatus(LockerStatus.ACTIVE);
+        long brokenLockers = lockerRepository.countByStatus(LockerStatus.BROKEN);
         double totalUsageRate = totalLockers == 0 ? 0 : (activeLockers * 100.0) / totalLockers;
 
-        String nearestExpiryDate = activeReservations.stream()
-                .map(LockerReservation::getExpiredAt)
-                .min(LocalDateTime::compareTo)
+        String nearestExpiryDate = lockerReservationRepository
+                .findMinExpiredAtByStatus(ReservationStatus.ACTIVE)
                 .map(date -> date.format(DATE_TIME_FORMATTER))
                 .orElse(null);
 
@@ -139,24 +130,18 @@ public class DashboardService {
                 .map(this::toProcessingHistory)
                 .toList();
 
-        Map<String, List<Locker>> lockersByBuilding = lockers.stream()
-                .collect(Collectors.groupingBy(Locker::getBuilding));
-
-        List<AdminDashboardResponse.UsageRateByBuilding> buildingUsageRates = lockersByBuilding.entrySet()
+        List<AdminDashboardResponse.UsageRateByBuilding> buildingUsageRates = lockerRepository.countGroupByBuilding()
                 .stream()
-                .map(entry -> {
-                    long buildingTotal = entry.getValue().size();
-                    long buildingActive = entry.getValue().stream()
-                            .filter(locker -> locker.getStatus() == LockerStatus.ACTIVE)
-                            .count();
+                .map(row -> {
+                    long buildingTotal = ((Number) row[1]).longValue();
+                    long buildingActive = ((Number) row[2]).longValue();
                     return AdminDashboardResponse.UsageRateByBuilding.builder()
-                            .building(entry.getKey())
+                            .building((String) row[0])
                             .totalLockers(buildingTotal)
                             .activeLockers(buildingActive)
                             .usageRate(buildingTotal == 0 ? 0 : (buildingActive * 100.0) / buildingTotal)
                             .build();
                 })
-                .sorted((a, b) -> a.getBuilding().compareToIgnoreCase(b.getBuilding()))
                 .toList();
 
         List<AdminDashboardResponse.RecentReservationActivity> recentReservationActivities = operationLogRepository
@@ -185,10 +170,9 @@ public class DashboardService {
                         .build())
                 .toList();
 
-        long expiringSoon = activeReservations.stream()
-                .filter(reservation -> !reservation.getExpiredAt().isBefore(LocalDateTime.now()))
-                .filter(reservation -> !reservation.getExpiredAt().isAfter(endOfSoon))
-                .count();
+        long expiringSoon = lockerReservationRepository
+                .countByStatusAndExpiredAtGreaterThanEqualAndExpiredAtLessThanEqual(
+                        ReservationStatus.ACTIVE, now, endOfSoon);
 
         return AdminDashboardResponse.builder()
                 .today(today.format(DATE_FORMATTER))
@@ -206,7 +190,7 @@ public class DashboardService {
                 .operationSummary(AdminDashboardResponse.OperationSummary.builder()
                         .autoAssignedToday(operationLogRepository.countByTypeInAndCreatedAtBetween(
                                 List.of(OperationLogType.RESERVATION_ASSIGNED), startOfToday, endOfToday))
-                        .brokenLockers(lockers.stream().filter(locker -> locker.getStatus() == LockerStatus.BROKEN).count())
+                        .brokenLockers(brokenLockers)
                         .expiringSoon(expiringSoon)
                         .newUsersThisWeek(userRepository.countByCreatedAtBetween(startOfWeek, endOfToday))
                         .build())

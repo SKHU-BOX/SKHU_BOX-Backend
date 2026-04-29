@@ -68,6 +68,10 @@ public class JwtTokenProvider {
         return getClaims(token).getSubject();
     }
 
+    public String getTokenType(String token) {
+        return getClaims(token).get("type", String.class);
+    }
+
     public boolean validateToken(String token) {
         try {
             getClaims(token);
