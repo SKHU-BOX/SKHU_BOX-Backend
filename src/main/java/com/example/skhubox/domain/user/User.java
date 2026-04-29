@@ -1,5 +1,6 @@
 package com.example.skhubox.domain.user;
 
+import com.example.skhubox.domain.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -9,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "users")
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,6 +37,9 @@ public class User {
 
     private String fcmToken;
 
+    @Column(nullable = false)
+    private boolean notificationEnabled = true;
+
     public User(String studentNumber, String name, String email, String department, String password) {
         this.studentNumber = studentNumber;
         this.name = name;
@@ -59,5 +63,13 @@ public class User {
 
     public void updateFcmToken(String fcmToken) {
         this.fcmToken = fcmToken;
+    }
+
+    public void updateNotificationEnabled(boolean notificationEnabled) {
+        this.notificationEnabled = notificationEnabled;
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
     }
 }

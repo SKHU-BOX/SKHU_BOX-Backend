@@ -15,7 +15,7 @@ set -a
 source .env
 set +a
 
-DEPLOY_BRANCH="${DEPLOY_BRANCH:-feature/notification}"
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 
 git fetch origin
 git switch "$DEPLOY_BRANCH"

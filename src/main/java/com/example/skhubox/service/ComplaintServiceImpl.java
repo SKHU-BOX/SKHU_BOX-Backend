@@ -1,6 +1,8 @@
 package com.example.skhubox.service;
 
 import com.example.skhubox.domain.complaint.Complaint;
+import com.example.skhubox.domain.complaint.ComplaintStatus;
+import com.example.skhubox.domain.operation.OperationLogType;
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.domain.user.UserRole;
 import com.example.skhubox.dto.complaint.ComplaintAnswerRequest;
@@ -25,6 +27,7 @@ public class ComplaintServiceImpl implements ComplaintService {
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final OperationLogService operationLogService;
 
     @Override
     @Transactional
@@ -39,6 +42,11 @@ public class ComplaintServiceImpl implements ComplaintService {
                 .build();
 
         complaintRepository.save(complaint);
+        operationLogService.log(
+                OperationLogType.COMPLAINT_SUBMITTED,
+                "신규 민원 접수",
+                request.getLockerNumber() + "번 사물함 민원이 접수되었습니다."
+        );
 
         // 관리자들에게 알림 생성
         List<User> admins = userRepository.findAllByRole(UserRole.ADMIN);
@@ -78,6 +86,13 @@ public class ComplaintServiceImpl implements ComplaintService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR));
 
         complaint.answerComplaint(request.getStatus(), request.getAnswer());
+        if (request.getStatus() == ComplaintStatus.COMPLETED) {
+            operationLogService.log(
+                    OperationLogType.COMPLAINT_PROCESSED,
+                    "민원 처리 완료",
+                    complaint.getLockerNumber() + "번 사물함 민원이 처리 완료되었습니다."
+            );
+        }
 
         // 알림 생성
         notificationService.createNotification(

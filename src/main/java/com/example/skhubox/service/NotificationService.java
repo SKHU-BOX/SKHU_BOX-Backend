@@ -54,7 +54,7 @@ public class NotificationService {
         notificationRepository.save(notification);
 
         // 실시간 푸시 알림 발송 (FCM 토큰이 있는 경우에만)
-        if (user.getFcmToken() != null && !user.getFcmToken().isEmpty()) {
+        if (user.isNotificationEnabled() && user.getFcmToken() != null && !user.getFcmToken().isEmpty()) {
             sendPushNotification(user.getFcmToken(), title, content);
         }
     }
