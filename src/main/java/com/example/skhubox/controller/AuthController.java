@@ -8,6 +8,9 @@ import com.example.skhubox.dto.auth.LoginResponse;
 import com.example.skhubox.dto.auth.PasswordResetConfirmRequest;
 import com.example.skhubox.dto.auth.PasswordResetRequest;
 import com.example.skhubox.dto.auth.SignupRequest;
+import com.example.skhubox.dto.auth.TokenRefreshRequest;
+import com.example.skhubox.dto.auth.TokenRefreshResponse;
+import com.example.skhubox.security.CustomUserDetails;
 import com.example.skhubox.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -15,6 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Auth", description = "인증 관련 API")
@@ -69,5 +73,19 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmRequest request) {
         authService.confirmPasswordReset(request);
         return ResponseEntity.ok(ApiResponse.ok("비밀번호가 성공적으로 변경되었습니다.", null));
+    }
+
+    @Operation(summary = "토큰 갱신", description = "Refresh Token으로 새로운 Access Token을 발급받습니다.")
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(@Valid @RequestBody TokenRefreshRequest request) {
+        TokenRefreshResponse response = authService.refresh(request.getRefreshToken());
+        return ResponseEntity.ok(ApiResponse.ok("토큰 갱신 성공", response));
+    }
+
+    @Operation(summary = "로그아웃", description = "Refresh Token을 무효화하여 로그아웃합니다.")
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        authService.logout(userDetails.getUsername());
+        return ResponseEntity.ok(ApiResponse.ok("로그아웃 성공", null));
     }
 }

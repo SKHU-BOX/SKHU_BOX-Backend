@@ -23,6 +23,9 @@ public class JwtTokenProvider {
     @Value("${jwt.expiration}")
     private long expiration;
 
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpiration;
+
     private SecretKey secretKey;
 
     @PostConstruct
@@ -40,6 +43,21 @@ public class JwtTokenProvider {
                 .subject(userDetails.getUsername())
                 .claim("role", userDetails.getUser().getRole().name())
                 .claim("authorities", List.of("ROLE_" + userDetails.getUser().getRole().name()))
+                .issuedAt(now)
+                .expiration(validity)
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public String createRefreshToken(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+        Date now = new Date();
+        Date validity = new Date(now.getTime() + refreshExpiration);
+
+        return Jwts.builder()
+                .subject(userDetails.getUsername())
+                .claim("type", "refresh")
                 .issuedAt(now)
                 .expiration(validity)
                 .signWith(secretKey)

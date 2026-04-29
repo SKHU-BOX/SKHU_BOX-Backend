@@ -1,17 +1,19 @@
 package com.example.skhubox.service;
 
 import com.example.skhubox.domain.user.User;
+import com.example.skhubox.dto.auth.EmailRequest;
+import com.example.skhubox.dto.auth.EmailVerifyRequest;
 import com.example.skhubox.dto.auth.LoginRequest;
 import com.example.skhubox.dto.auth.LoginResponse;
 import com.example.skhubox.dto.auth.PasswordResetConfirmRequest;
 import com.example.skhubox.dto.auth.PasswordResetRequest;
 import com.example.skhubox.dto.auth.SignupRequest;
-import com.example.skhubox.dto.auth.EmailRequest;
-import com.example.skhubox.dto.auth.EmailVerifyRequest;
+import com.example.skhubox.dto.auth.TokenRefreshResponse;
 import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.UserRepository;
 import com.example.skhubox.security.CustomUserDetails;
+import com.example.skhubox.security.CustomUserDetailsService;
 import com.example.skhubox.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +42,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final UserService userService;
+    private final CustomUserDetailsService customUserDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
@@ -48,9 +52,11 @@ public class AuthService {
     private static final String EMAIL_VERIFY_KEY_PREFIX = "email:verify:";
     private static final String EMAIL_VERIFIED_KEY_PREFIX = "email:verified:";
     private static final String PASSWORD_RESET_KEY_PREFIX = "password:reset:";
-    private static final long VERIFY_CODE_EXPIRATION = 5; // 5분
-    private static final long VERIFIED_FLAG_EXPIRATION = 30; // 30분
-    private static final long PASSWORD_RESET_EXPIRATION = 15; // 15분
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "refresh:token:";
+    private static final long VERIFY_CODE_EXPIRATION = 5;
+    private static final long VERIFIED_FLAG_EXPIRATION = 30;
+    private static final long PASSWORD_RESET_EXPIRATION = 15;
+    private static final long REFRESH_TOKEN_EXPIRATION_DAYS = 7;
     private static final String PASSWORD_RESET_URL_ENV = "PASSWORD_RESET_URL";
 
     public void signup(SignupRequest request) {
@@ -204,7 +210,6 @@ public class AuthService {
         }
     }
 
-    @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         userService.findByStudentNumber(request.getStudentNumber());
 
@@ -216,12 +221,22 @@ public class AuthService {
                     )
             );
 
-            String token = jwtTokenProvider.createToken(authentication);
+            String accessToken = jwtTokenProvider.createToken(authentication);
+            String refreshToken = jwtTokenProvider.createRefreshToken(authentication);
 
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            String studentNumber = userDetails.getUsername();
+
+            redisTemplate.opsForValue().set(
+                    REFRESH_TOKEN_KEY_PREFIX + studentNumber,
+                    refreshToken,
+                    REFRESH_TOKEN_EXPIRATION_DAYS,
+                    TimeUnit.DAYS
+            );
 
             return new LoginResponse(
-                    token,
+                    accessToken,
+                    refreshToken,
                     "Bearer",
                     userDetails.getUser().getRole().name()
             );
@@ -230,5 +245,30 @@ public class AuthService {
         } catch (AuthenticationException e) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
+    }
+
+    public TokenRefreshResponse refresh(String refreshToken) {
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        String studentNumber = jwtTokenProvider.getStudentNumber(refreshToken);
+        String stored = redisTemplate.opsForValue().get(REFRESH_TOKEN_KEY_PREFIX + studentNumber);
+
+        if (stored == null || !stored.equals(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) customUserDetailsService.loadUserByUsername(studentNumber);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities()
+        );
+        String newAccessToken = jwtTokenProvider.createToken(authentication);
+
+        return new TokenRefreshResponse(newAccessToken, "Bearer");
+    }
+
+    public void logout(String studentNumber) {
+        redisTemplate.delete(REFRESH_TOKEN_KEY_PREFIX + studentNumber);
     }
 }
