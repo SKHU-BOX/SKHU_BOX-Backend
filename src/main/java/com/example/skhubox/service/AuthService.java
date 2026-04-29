@@ -1,15 +1,18 @@
 package com.example.skhubox.service;
 
 import com.example.skhubox.domain.user.User;
-import com.example.skhubox.dto.auth.LoginRequest;
-import com.example.skhubox.dto.auth.LoginResponse;
-import com.example.skhubox.dto.auth.SignupRequest;
 import com.example.skhubox.dto.auth.EmailRequest;
 import com.example.skhubox.dto.auth.EmailVerifyRequest;
+import com.example.skhubox.dto.auth.LoginRequest;
+import com.example.skhubox.dto.auth.LoginResponse;
+import com.example.skhubox.dto.auth.PasswordResetConfirmRequest;
+import com.example.skhubox.dto.auth.PasswordResetRequest;
+import com.example.skhubox.dto.auth.SignupRequest;
 import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.UserRepository;
 import com.example.skhubox.security.CustomUserDetails;
+import com.example.skhubox.security.CustomUserDetailsService;
 import com.example.skhubox.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +39,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final UserService userService;
+    private final CustomUserDetailsService customUserDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
@@ -44,11 +48,14 @@ public class AuthService {
 
     private static final String EMAIL_VERIFY_KEY_PREFIX = "email:verify:";
     private static final String EMAIL_VERIFIED_KEY_PREFIX = "email:verified:";
-    private static final long VERIFY_CODE_EXPIRATION = 5; // 5분
-    private static final long VERIFIED_FLAG_EXPIRATION = 30; // 30분
+    private static final String PASSWORD_RESET_KEY_PREFIX = "password:reset:";
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "refresh:token:";
+    private static final long VERIFY_CODE_EXPIRATION = 5;
+    private static final long VERIFIED_FLAG_EXPIRATION = 30;
+    private static final long PASSWORD_RESET_EXPIRATION = 15;
+    private static final String PASSWORD_RESET_URL_ENV = "PASSWORD_RESET_URL";
 
     public void signup(SignupRequest request) {
-        // 이메일 인증 여부 확인
         String isVerified = redisTemplate.opsForValue().get(EMAIL_VERIFIED_KEY_PREFIX + request.getEmail());
         if (isVerified == null) {
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
@@ -70,61 +77,67 @@ public class AuthService {
                 passwordEncoder.encode(request.getPassword())
         );
 
-        // 테스트용 관리자 계정 생성 로직 (학번이 999999999인 경우)
-        if ("999999999".equals(request.getStudentNumber())) {
-            user.assignAdminRole();
-        }
-
         userRepository.save(user);
-        
-        // 가입 완료 후 인증 플래그 삭제
         redisTemplate.delete(EMAIL_VERIFIED_KEY_PREFIX + request.getEmail());
     }
 
     public void sendVerificationCode(EmailRequest request) {
         String email = request.getEmail();
-
-        // 학교 이메일 도메인 체크
         if (!email.endsWith("@office.skhu.ac.kr")) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
-
-        // 이미 가입된 이메일인지 체크
         if (userService.existsByEmail(email)) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
         String code = generateCode();
-
-        // Redis에 코드 저장 (5분간 유효)
         redisTemplate.opsForValue().set(
                 EMAIL_VERIFY_KEY_PREFIX + email,
                 code,
                 VERIFY_CODE_EXPIRATION,
                 TimeUnit.MINUTES
         );
-
         sendEmail(email, code);
     }
 
     public void verifyCode(EmailVerifyRequest request) {
         String email = request.getEmail();
         String savedCode = redisTemplate.opsForValue().get(EMAIL_VERIFY_KEY_PREFIX + email);
-
         if (savedCode == null || !savedCode.equals(request.getCode())) {
             throw new BusinessException(ErrorCode.INVALID_VERIFICATION_CODE);
         }
-
-        // 인증 성공 시 Redis에 인증 완료 플래그 저장 (30분간 유효)
         redisTemplate.opsForValue().set(
                 EMAIL_VERIFIED_KEY_PREFIX + email,
                 "true",
                 VERIFIED_FLAG_EXPIRATION,
                 TimeUnit.MINUTES
         );
-
-        // 사용한 인증 코드는 삭제
         redisTemplate.delete(EMAIL_VERIFY_KEY_PREFIX + email);
+    }
+
+    public void requestPasswordReset(PasswordResetRequest request) {
+        userRepository.findByStudentNumberAndEmail(request.getStudentNumber(), request.getEmail())
+                .ifPresent(user -> {
+                    String code = generateCode();
+                    redisTemplate.opsForValue().set(
+                            PASSWORD_RESET_KEY_PREFIX + user.getStudentNumber(),
+                            code,
+                            PASSWORD_RESET_EXPIRATION,
+                            TimeUnit.MINUTES
+                    );
+                    sendPasswordResetEmail(user.getEmail(), code);
+                });
+    }
+
+    public void confirmPasswordReset(PasswordResetConfirmRequest request) {
+        String stored = redisTemplate.opsForValue().get(PASSWORD_RESET_KEY_PREFIX + request.getStudentNumber());
+        if (stored == null || !stored.equals(request.getCode())) {
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD_RESET_TOKEN);
+        }
+        User user = userRepository.findByStudentNumber(request.getStudentNumber())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
+        redisTemplate.delete(PASSWORD_RESET_KEY_PREFIX + request.getStudentNumber());
     }
 
     private String generateCode() {
@@ -145,7 +158,33 @@ public class AuthService {
         }
     }
 
-    @Transactional(readOnly = true)
+    private void sendPasswordResetEmail(String to, String token) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject("[SKHUBOX] 비밀번호 재설정 안내");
+            String passwordResetUrl = System.getenv(PASSWORD_RESET_URL_ENV);
+            String resetLink = passwordResetUrl == null || passwordResetUrl.isBlank()
+                    ? null
+                    : passwordResetUrl + (passwordResetUrl.contains("?") ? "&" : "?") + "token=" + token;
+            message.setText("""
+                    비밀번호 재설정을 요청하셨다면 아래 인증 코드를 입력해주세요.
+
+                    %s
+
+                    비밀번호 재설정 인증 코드: [%s]
+                    15분 이내에 학번과 함께 입력해주세요.
+                    """.formatted(
+                    resetLink == null ? "재설정 링크가 설정되지 않아 인증 코드를 직접 입력해야 합니다." : "재설정 링크: " + resetLink,
+                    token
+            ));
+            mailSender.send(message);
+        } catch (Exception e) {
+            log.error("Failed to send password reset email to {}", to, e);
+            throw new BusinessException(ErrorCode.EMAIL_SEND_FAILED);
+        }
+    }
+
     public LoginResponse login(LoginRequest request) {
         userService.findByStudentNumber(request.getStudentNumber());
 
@@ -157,12 +196,22 @@ public class AuthService {
                     )
             );
 
-            String token = jwtTokenProvider.createToken(authentication);
+            String accessToken = jwtTokenProvider.createAccessToken(authentication);
+            String refreshToken = jwtTokenProvider.createRefreshToken(authentication);
 
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            String studentNumber = userDetails.getUsername();
+
+            redisTemplate.opsForValue().set(
+                    REFRESH_TOKEN_KEY_PREFIX + studentNumber,
+                    refreshToken,
+                    jwtTokenProvider.getRefreshExpiration(),
+                    TimeUnit.MILLISECONDS
+            );
 
             return new LoginResponse(
-                    token,
+                    accessToken,
+                    refreshToken,
                     "Bearer",
                     userDetails.getUser().getRole().name()
             );
@@ -171,5 +220,48 @@ public class AuthService {
         } catch (AuthenticationException e) {
             throw new BusinessException(ErrorCode.LOGIN_FAILED);
         }
+    }
+
+    public LoginResponse refresh(String refreshToken) {
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        if (!"refresh".equals(jwtTokenProvider.getTokenType(refreshToken))) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        String studentNumber = jwtTokenProvider.getStudentNumber(refreshToken);
+        String stored = redisTemplate.opsForValue().get(REFRESH_TOKEN_KEY_PREFIX + studentNumber);
+
+        if (stored == null || !stored.equals(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) customUserDetailsService.loadUserByUsername(studentNumber);
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities()
+        );
+        
+        String newAccessToken = jwtTokenProvider.createAccessToken(authentication);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(authentication);
+
+        redisTemplate.opsForValue().set(
+                REFRESH_TOKEN_KEY_PREFIX + studentNumber,
+                newRefreshToken,
+                jwtTokenProvider.getRefreshExpiration(),
+                TimeUnit.MILLISECONDS
+        );
+
+        return new LoginResponse(
+                newAccessToken,
+                newRefreshToken,
+                "Bearer",
+                userDetails.getUser().getRole().name()
+        );
+    }
+
+    public void logout(String studentNumber) {
+        redisTemplate.delete(REFRESH_TOKEN_KEY_PREFIX + studentNumber);
     }
 }

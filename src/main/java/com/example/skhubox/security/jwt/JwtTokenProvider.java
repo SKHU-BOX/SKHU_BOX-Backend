@@ -23,6 +23,9 @@ public class JwtTokenProvider {
     @Value("${jwt.expiration}")
     private long expiration;
 
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpiration;
+
     private SecretKey secretKey;
 
     @PostConstruct
@@ -30,7 +33,7 @@ public class JwtTokenProvider {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String createToken(Authentication authentication) {
+    public String createAccessToken(Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
         Date now = new Date();
@@ -46,12 +49,27 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public String createRefreshToken(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+        Date now = new Date();
+        Date validity = new Date(now.getTime() + refreshExpiration);
+
+        return Jwts.builder()
+                .subject(userDetails.getUsername())
+                .claim("type", "refresh")
+                .issuedAt(now)
+                .expiration(validity)
+                .signWith(secretKey)
+                .compact();
+    }
+
     public String getStudentNumber(String token) {
         return getClaims(token).getSubject();
     }
 
-    public String getRole(String token) {
-        return getClaims(token).get("role", String.class);
+    public String getTokenType(String token) {
+        return getClaims(token).get("type", String.class);
     }
 
     public boolean validateToken(String token) {
@@ -69,5 +87,9 @@ public class JwtTokenProvider {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public long getRefreshExpiration() {
+        return refreshExpiration;
     }
 }
