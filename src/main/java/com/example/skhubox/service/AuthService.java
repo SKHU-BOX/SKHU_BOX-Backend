@@ -120,8 +120,8 @@ public class AuthService {
                 .ifPresent(user -> {
                     String code = generateCode();
                     redisTemplate.opsForValue().set(
-                            PASSWORD_RESET_KEY_PREFIX + user.getStudentNumber(),
-                            code,
+                            PASSWORD_RESET_KEY_PREFIX + code,
+                            user.getStudentNumber(),
                             PASSWORD_RESET_EXPIRATION,
                             TimeUnit.MINUTES
                     );
@@ -130,14 +130,14 @@ public class AuthService {
     }
 
     public void confirmPasswordReset(PasswordResetConfirmRequest request) {
-        String stored = redisTemplate.opsForValue().get(PASSWORD_RESET_KEY_PREFIX + request.getStudentNumber());
-        if (stored == null || !stored.equals(request.getCode())) {
+        String studentNumber = redisTemplate.opsForValue().get(PASSWORD_RESET_KEY_PREFIX + request.getCode());
+        if (studentNumber == null) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD_RESET_TOKEN);
         }
-        User user = userRepository.findByStudentNumberAndDeletedFalse(request.getStudentNumber())
+        User user = userRepository.findByStudentNumberAndDeletedFalse(studentNumber)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
-        redisTemplate.delete(PASSWORD_RESET_KEY_PREFIX + request.getStudentNumber());
+        redisTemplate.delete(PASSWORD_RESET_KEY_PREFIX + request.getCode());
     }
 
     private String generateCode() {
@@ -173,7 +173,7 @@ public class AuthService {
                     %s
 
                     비밀번호 재설정 인증 코드: [%s]
-                    15분 이내에 학번과 함께 입력해주세요.
+                    15분 이내에 입력해주세요.
                     """.formatted(
                     resetLink == null ? "재설정 링크가 설정되지 않아 인증 코드를 직접 입력해야 합니다." : "재설정 링크: " + resetLink,
                     token
