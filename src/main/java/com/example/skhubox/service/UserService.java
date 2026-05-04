@@ -5,6 +5,7 @@ import com.example.skhubox.domain.user.AdminActionLog;
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.domain.user.UserRole;
 import com.example.skhubox.dto.NotificationSettingResponse;
+import com.example.skhubox.dto.UserInfoResponse;
 import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.AdminActionLogRepository;
@@ -69,6 +70,10 @@ public class UserService {
         User user = findByStudentNumber(studentNumber);
         user.updateNotificationEnabled(enabled);
         return new NotificationSettingResponse(user.isNotificationEnabled());
+    }
+
+    public UserInfoResponse getUserInfo(String studentNumber) {
+        return UserInfoResponse.from(findByStudentNumber(studentNumber));
     }
 
     @Transactional

@@ -4,6 +4,7 @@ import com.example.skhubox.dto.ApiResponse;
 import com.example.skhubox.dto.FcmTokenRequest;
 import com.example.skhubox.dto.NotificationSettingRequest;
 import com.example.skhubox.dto.NotificationSettingResponse;
+import com.example.skhubox.dto.UserInfoResponse;
 import com.example.skhubox.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +21,16 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+
+    @Operation(summary = "내 정보 조회", description = "로그인한 사용자의 이름, 학번, 학부, 이메일, 가입일을 조회합니다.")
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getMyInfo(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                "사용자 정보 조회 성공",
+                userService.getUserInfo(userDetails.getUsername())
+        ));
+    }
 
     @Operation(summary = "FCM 토큰 등록", description = "푸시 알림을 위한 기기 토큰을 등록합니다.")
     @PostMapping("/fcm-token")
