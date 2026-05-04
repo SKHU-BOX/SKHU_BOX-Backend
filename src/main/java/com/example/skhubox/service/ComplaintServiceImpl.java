@@ -63,6 +63,16 @@ public class ComplaintServiceImpl implements ComplaintService {
     }
 
     @Override
+    public ComplaintResponse getComplaintDetail(String studentNumber, Long complaintId) {
+        Complaint complaint = complaintRepository.findById(complaintId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMPLAINT_NOT_FOUND));
+        if (!complaint.getUser().getStudentNumber().equals(studentNumber)) {
+            throw new BusinessException(ErrorCode.COMPLAINT_ACCESS_DENIED);
+        }
+        return ComplaintResponse.of(complaint);
+    }
+
+    @Override
     public List<ComplaintResponse> getMyComplaints(String studentNumber) {
         User user = userRepository.findByStudentNumber(studentNumber)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));

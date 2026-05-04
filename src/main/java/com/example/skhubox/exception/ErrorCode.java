@@ -34,6 +34,9 @@ public enum ErrorCode {
 
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "존재하지 않는 공지사항입니다."),
 
+    COMPLAINT_NOT_FOUND(HttpStatus.NOT_FOUND, "C003", "존재하지 않는 민원입니다."),
+    COMPLAINT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "C004", "해당 민원에 접근 권한이 없습니다."),
+
     QUEUE_SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "Q001", "대기열 모드 설정 정보를 찾을 수 없습니다.");
 
     private final HttpStatus status;
