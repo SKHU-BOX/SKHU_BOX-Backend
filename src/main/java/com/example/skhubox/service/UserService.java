@@ -4,7 +4,9 @@ import com.example.skhubox.domain.operation.OperationLogType;
 import com.example.skhubox.domain.user.AdminActionLog;
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.domain.user.UserRole;
+import com.example.skhubox.dto.ChangePasswordRequest;
 import com.example.skhubox.dto.NotificationSettingResponse;
+import com.example.skhubox.dto.UpdateProfileRequest;
 import com.example.skhubox.dto.UserInfoResponse;
 import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
@@ -12,6 +14,7 @@ import com.example.skhubox.repository.AdminActionLogRepository;
 import com.example.skhubox.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +28,7 @@ public class UserService {
     private final LockerReservationService lockerReservationService;
     private final OperationLogService operationLogService;
     private final StringRedisTemplate redisTemplate;
+    private final PasswordEncoder passwordEncoder;
 
     private static final String REFRESH_TOKEN_KEY_PREFIX = "refresh:token:";
 
@@ -70,6 +74,22 @@ public class UserService {
         User user = findByStudentNumber(studentNumber);
         user.updateNotificationEnabled(enabled);
         return new NotificationSettingResponse(user.isNotificationEnabled());
+    }
+
+    @Transactional
+    public UserInfoResponse updateProfile(String studentNumber, UpdateProfileRequest request) {
+        User user = findByStudentNumber(studentNumber);
+        user.updateProfile(request.getName(), request.getDepartment());
+        return UserInfoResponse.from(user);
+    }
+
+    @Transactional
+    public void changePassword(String studentNumber, ChangePasswordRequest request) {
+        User user = findByStudentNumber(studentNumber);
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+        }
+        user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
     }
 
     public UserInfoResponse getUserInfo(String studentNumber) {

@@ -72,6 +72,11 @@ public class User extends BaseEntity {
         this.notificationEnabled = notificationEnabled;
     }
 
+    public void updateProfile(String name, String department) {
+        this.name = name;
+        this.department = department;
+    }
+
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
