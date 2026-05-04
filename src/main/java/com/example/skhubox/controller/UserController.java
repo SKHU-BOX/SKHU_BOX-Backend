@@ -1,11 +1,14 @@
 package com.example.skhubox.controller;
 
 import com.example.skhubox.dto.ApiResponse;
+import com.example.skhubox.dto.ChangePasswordRequest;
 import com.example.skhubox.dto.FcmTokenRequest;
 import com.example.skhubox.dto.NotificationSettingRequest;
 import com.example.skhubox.dto.NotificationSettingResponse;
+import com.example.skhubox.dto.UpdateProfileRequest;
 import com.example.skhubox.dto.UserInfoResponse;
 import com.example.skhubox.service.UserService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +54,26 @@ public class UserController {
                 "알림 설정이 변경되었습니다.",
                 userService.updateNotificationSetting(userDetails.getUsername(), request.isEnabled())
         ));
+    }
+
+    @Operation(summary = "프로필 수정", description = "이름, 학부를 변경합니다.")
+    @PatchMapping("/me")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> updateProfile(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                "프로필이 수정되었습니다.",
+                userService.updateProfile(userDetails.getUsername(), request)
+        ));
+    }
+
+    @Operation(summary = "비밀번호 변경", description = "현재 비밀번호 확인 후 새 비밀번호로 변경합니다.")
+    @PatchMapping("/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        userService.changePassword(userDetails.getUsername(), request);
+        return ResponseEntity.ok(ApiResponse.ok("비밀번호가 변경되었습니다.", null));
     }
 
     @Operation(summary = "회원 탈퇴", description = "회원 탈퇴를 진행합니다. 사용 중인 사물함은 자동으로 반납됩니다.")
