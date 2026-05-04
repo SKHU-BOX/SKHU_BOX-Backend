@@ -10,10 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PasswordResetConfirmRequest {
 
-    @NotBlank(message = "학번은 필수 입력 사항입니다.")
-    @Pattern(regexp = "^[0-9]{9}$", message = "학번은 9자리로 입력해주세요.")
-    private String studentNumber;
-
     @NotBlank(message = "인증 코드는 필수 입력 사항입니다.")
     @Pattern(regexp = "^[0-9]{6}$", message = "인증 코드는 6자리 숫자입니다.")
     private String code;
