@@ -8,6 +8,7 @@ import com.example.skhubox.domain.user.User;
 import com.example.skhubox.dto.LockerReservationResponse;
 import com.example.skhubox.dto.LockerResponse;
 import com.example.skhubox.dto.QueueResponse;
+import com.example.skhubox.dto.ReservationHistoryResponse;
 import com.example.skhubox.exception.BusinessException;
 import com.example.skhubox.exception.ErrorCode;
 import com.example.skhubox.repository.LockerRepository;
@@ -213,6 +214,16 @@ public class LockerReservationServiceImpl implements LockerReservationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NO_ACTIVE_RESERVATION));
 
         return toResponse(reservation, "현재 예약 정보 조회 성공");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReservationHistoryResponse> getMyReservationHistory(String studentNumber) {
+        User user = getUser(studentNumber);
+        return lockerReservationRepository.findAllByUser_IdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .map(ReservationHistoryResponse::from)
+                .collect(Collectors.toList());
     }
 
     @Override

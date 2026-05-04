@@ -6,16 +6,20 @@ import com.example.skhubox.dto.LockerReservationResponse;
 import com.example.skhubox.dto.LockerResponse;
 import com.example.skhubox.dto.LockerReserveRequest;
 import com.example.skhubox.dto.QueueResponse;
+import com.example.skhubox.dto.ReservationHistoryResponse;
 import com.example.skhubox.security.CustomUserDetails;
 import com.example.skhubox.service.LockerReservationService;
 import com.example.skhubox.service.WaitingQueueService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "Locker API", description = "사물함 예약 관련 API")
 @RestController
 @RequestMapping("/api/lockers")
 public class LockerReservationController {
@@ -32,6 +36,15 @@ public class LockerReservationController {
     public ResponseEntity<ApiResponse<List<LockerResponse>>> getAllLockers() {
         List<LockerResponse> response = lockerReservationService.getAllLockers();
         return ResponseEntity.ok(ApiResponse.ok("전체 사물함 목록 조회 성공", response));
+    }
+
+    @Operation(summary = "내 예약 내역 조회", description = "현재 및 과거 사물함 예약 내역을 최신순으로 조회합니다.")
+    @GetMapping("/my-history")
+    public ResponseEntity<ApiResponse<List<ReservationHistoryResponse>>> getMyReservationHistory(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok("예약 내역 조회 성공",
+                lockerReservationService.getMyReservationHistory(userDetails.getUsername())));
     }
 
     @GetMapping("/my-reservation")
