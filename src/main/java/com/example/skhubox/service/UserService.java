@@ -4,6 +4,7 @@ import com.example.skhubox.domain.operation.OperationLogType;
 import com.example.skhubox.domain.user.AdminActionLog;
 import com.example.skhubox.domain.user.User;
 import com.example.skhubox.domain.user.UserRole;
+import com.example.skhubox.common.RedisKeys;
 import com.example.skhubox.dto.ChangePasswordRequest;
 import com.example.skhubox.dto.NotificationSettingResponse;
 import com.example.skhubox.dto.UpdateProfileRequest;
@@ -29,8 +30,6 @@ public class UserService {
     private final OperationLogService operationLogService;
     private final StringRedisTemplate redisTemplate;
     private final PasswordEncoder passwordEncoder;
-
-    private static final String REFRESH_TOKEN_KEY_PREFIX = "refresh:token:";
 
     public User findByStudentNumber(String studentNumber) {
         return userRepository.findByStudentNumberAndDeletedFalse(studentNumber)
@@ -111,7 +110,7 @@ public class UserService {
         }
 
         // 2. Redis에서 Refresh Token 삭제하여 즉시 로그아웃 처리
-        redisTemplate.delete(REFRESH_TOKEN_KEY_PREFIX + studentNumber);
+        redisTemplate.delete(RedisKeys.REFRESH_TOKEN + studentNumber);
 
         // 3. 소프트 딜리트 처리
         user.withdraw();

@@ -1,5 +1,6 @@
 package com.example.skhubox.service;
 
+import com.example.skhubox.common.RedisKeys;
 import com.example.skhubox.domain.locker.Locker;
 import com.example.skhubox.domain.operation.OperationLogType;
 import com.example.skhubox.domain.reservation.LockerReservation;
@@ -42,13 +43,11 @@ public class LockerReservationServiceImpl implements LockerReservationService {
     private final OperationLogService operationLogService;
     private final RedisTemplate<String, String> redisTemplate;
 
-    private static final String LOCK_PREFIX = "lock:locker:";
-
     @Override
     public LockerReservationResponse reserveLocker(String studentNumber, Long lockerId) {
         reservationExpirationService.expireOverdueReservations();
 
-        String lockKey = LOCK_PREFIX + lockerId;
+        String lockKey = RedisKeys.LOCKER_LOCK + lockerId;
         Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey, "locked", 5, TimeUnit.SECONDS);
         
         if (Boolean.FALSE.equals(acquired)) {
